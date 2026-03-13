@@ -2,6 +2,7 @@ import { ConnectButton } from '@/components/ConnectButton';
 import { Leaderboard } from '@/components/Leaderboard';
 import { SignalFeed } from '@/components/SignalFeed';
 import { CopyTradeLog } from '@/components/CopyTradeLog';
+import { ReferralBanner, RefCodeNotice } from '@/components/ReferralBanner';
 
 export default function Home() {
   return (
@@ -23,6 +24,12 @@ export default function Home() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-10">
+        {/* ref 코드 알림 */}
+        <RefCodeNotice />
+
+        {/* 레퍼럴 배너 (로그인 후) */}
+        <ReferralBanner />
+
         {/* 히어로 */}
         <section className="text-center py-8">
           <h1 className="text-4xl font-bold text-white mb-3">
