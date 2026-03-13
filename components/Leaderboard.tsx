@@ -93,7 +93,7 @@ function FollowModal({ trader, onClose, followerAddress }: FollowModalProps) {
               </div>
 
               <div className="bg-gray-800 rounded-lg p-3 text-sm text-gray-400">
-                <p>Builder Code: <span className="text-indigo-400 font-mono">copyperp</span></p>
+                <p>Builder Code: <span className="text-indigo-400 font-mono">noivan</span></p>
                 <p className="mt-1">Fee: 0.05% of each copied trade</p>
               </div>
             </div>
@@ -128,7 +128,7 @@ export function Leaderboard() {
   const followerAddress: string = solanaWallet?.address || '';
 
   useEffect(() => {
-    fetch(`${API_URL}/traders?use_mock=true`)
+    fetch(`${API_URL}/traders?mock=true`)
       .then(r => r.json())
       .then(d => setTraders(d.data || []))
       .catch(() => {})

@@ -14,6 +14,7 @@ export function ConnectButton() {
   if (!ready) {
     return (
       <button
+        id="wallet-btn"
         disabled
         className="bg-gray-700 text-gray-400 px-4 py-2 rounded-lg text-sm cursor-not-allowed"
       >
@@ -25,6 +26,7 @@ export function ConnectButton() {
   if (!authenticated) {
     return (
       <button
+        id="wallet-btn"
         onClick={login}
         className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
       >
@@ -42,6 +44,7 @@ export function ConnectButton() {
         </span>
       </div>
       <button
+        id="wallet-disconnect-btn"
         onClick={logout}
         className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-2 rounded-lg text-sm transition-colors"
       >
