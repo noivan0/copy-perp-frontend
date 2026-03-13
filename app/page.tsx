@@ -1,6 +1,7 @@
 import { ConnectButton } from '@/components/ConnectButton';
 import { Leaderboard } from '@/components/Leaderboard';
 import { SignalFeed } from '@/components/SignalFeed';
+import { CopyTradeLog } from '@/components/CopyTradeLog';
 
 export default function Home() {
   return (
@@ -35,7 +36,7 @@ export default function Home() {
           <div className="flex items-center justify-center gap-6 mt-6 text-sm text-gray-500">
             <span>🔐 Non-custodial</span>
             <span>⚡ 500ms latency</span>
-            <span>💰 0.05% fee</span>
+            <span>💰 0.1% fee</span>
             <span>🎁 Fuul rewards</span>
           </div>
         </section>
@@ -54,6 +55,17 @@ export default function Home() {
           </div>
           <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
             <Leaderboard />
+          </div>
+        </section>
+
+        {/* Copy Trade 내역 */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-white">실시간 Copy Trade 내역</h2>
+            <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">30초 자동 갱신</span>
+          </div>
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+            <CopyTradeLog />
           </div>
         </section>
 
