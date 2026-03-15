@@ -48,28 +48,31 @@ function RecommendedBadge({ alias }: { alias?: string }) {
 function FollowButton({
   trader,
   isLoggedIn,
+  followerAddress,
   onFollowClick,
 }: {
   trader: Trader;
   isLoggedIn: boolean;
+  followerAddress?: string;
   onFollowClick: (addr: string) => void;
 }) {
   const [following, setFollowing] = useState(false);
   const [done, setDone] = useState(false);
 
   const handleClick = async () => {
-    if (!isLoggedIn) {
+    if (!isLoggedIn || !followerAddress) {
       onFollowClick(trader.address);
       return;
     }
     setFollowing(true);
     try {
-      // 이미 로그인된 경우 직접 onboard 호출
+      // 이미 로그인된 경우 직접 onboard 호출 (follower_address 포함)
       const res = await fetch(`${API_URL}/followers/onboard`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          trader_address: trader.address,
+          follower_address: followerAddress,   // 버그 수정: 팔로워 주소 포함
+          traders: [trader.address],
           copy_ratio: 0.1,
           max_position_usdc: 50,
         }),
@@ -102,11 +105,18 @@ function FollowButton({
 }
 
 export function Leaderboard() {
-  const { authenticated } = usePrivy();
+  const { authenticated, user } = usePrivy();
   const [traders, setTraders] = useState<Trader[]>([]);
   const [loading, setLoading] = useState(true);
   const [loginModal, setLoginModal] = useState(false);
   const [followTarget, setFollowTarget] = useState<string | undefined>();
+
+  // Privy embedded wallet 주소 추출
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const solanaWallet = (user?.linkedAccounts as any[])?.find(
+    (a: any) => a.type === 'wallet' && a.chainType === 'solana'
+  );
+  const followerAddress: string | undefined = solanaWallet?.address;
 
   const fetchTraders = useCallback(async () => {
     try {
@@ -243,6 +253,7 @@ export function Leaderboard() {
                     <FollowButton
                       trader={trader}
                       isLoggedIn={authenticated}
+                      followerAddress={followerAddress}
                       onFollowClick={handleFollowClick}
                     />
                   </td>
