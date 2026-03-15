@@ -3,6 +3,7 @@ import { Leaderboard } from '@/components/Leaderboard';
 import { SignalFeed } from '@/components/SignalFeed';
 import { CopyTradeLog } from '@/components/CopyTradeLog';
 import { ReferralBanner, RefCodeNotice } from '@/components/ReferralBanner';
+import { RankedTraders } from '@/components/RankedTraders';
 
 export default function Home() {
   return (
@@ -54,10 +55,22 @@ export default function Home() {
           <SignalFeed />
         </section>
 
-        {/* 리더보드 */}
+        {/* CRS 신뢰도 랭킹 */}
+        <section>
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h2 className="text-xl font-semibold text-white">신뢰도 랭킹 (CRS)</h2>
+              <p className="text-xs text-gray-500 mt-0.5">5차원 Composite Reliability Score 기반 — 복사하기 전에 확인하세요</p>
+            </div>
+            <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">AI 분석</span>
+          </div>
+          <RankedTraders />
+        </section>
+
+        {/* 전체 리더보드 */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-white">Top Traders</h2>
+            <h2 className="text-xl font-semibold text-white">전체 리더보드</h2>
             <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">Live</span>
           </div>
           <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
