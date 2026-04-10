@@ -60,7 +60,7 @@ function fmtPnl(pnl: number): string {
   return `${pnl >= 0 ? '+' : ''}$${Math.abs(pnl).toFixed(2)}`;
 }
 
-export function Portfolio() {
+export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
   const { authenticated, user } = usePrivy();
   const { address: walletAddress, loading: walletLoading, timedOut: walletTimedOut } = useSolanaWallet();
   const [state, setState] = useState<PortfolioState | null>(null);
@@ -208,15 +208,8 @@ export function Portfolio() {
     }
   };
 
-  /* ── 미인증 ── */
-  if (!authenticated) {
-    return (
-      <div className="text-center py-10 text-gray-500">
-        <div className="text-4xl mb-3">👤</div>
-        <p>Connect wallet to view your portfolio</p>
-      </div>
-    );
-  }
+  /* ── 미인증 → 섹션 전체 숨김 ── */
+  if (!authenticated) return null;
 
   /* ── 로딩 ── */
   if (loading) {
@@ -246,6 +239,24 @@ export function Portfolio() {
   const pnl = safeNum(pnlSummary?.total_pnl);
   const winRate = safeNum(pnlSummary?.win_rate) * 100; // API returns 0~1
   const totalTrades = safeNum(pnlSummary?.total_trades);
+
+  // sectionMode: section 헤더 포함 전체 렌더
+  if (sectionMode) {
+    return (
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-white">My Portfolio</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Your PnL, followed traders & recent copy trades</p>
+          </div>
+          <span className="text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full">● 30s</span>
+        </div>
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <Portfolio />
+        </div>
+      </section>
+    );
+  }
 
   return (
     <div className="space-y-6">

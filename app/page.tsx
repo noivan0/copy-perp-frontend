@@ -112,21 +112,8 @@ export default function Home() {
           <RankedTraders />
         </section>
 
-        {/* My Portfolio — CRS 바로 뒤 (팔로우 후 즉시 확인) */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-xl font-semibold text-white">My Portfolio</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Your PnL, followed traders &amp; recent copy trades</p>
-            </div>
-            <span className="text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full">
-              ● 30s
-            </span>
-          </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-            <Portfolio />
-          </div>
-        </section>
+        {/* My Portfolio — 로그인 시만 노출 (Portfolio 내부에서 null 반환) */}
+        <Portfolio sectionMode />
 
         {/* Full Leaderboard */}
         <section>
