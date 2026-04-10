@@ -123,9 +123,20 @@ function FollowButton({
       const data = await res.json();
       if (data.ok) {
         setState('done');
-        // Portfolio 컴포넌트에 갱신 이벤트 전달
+        // Portfolio 자동 갱신 트리거
         if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('portfolio:refresh'));
+          window.dispatchEvent(new CustomEvent('followSuccess'));
+        }
+        // localStorage 캐시 업데이트 (DB 리셋 대비)
+        if (typeof window !== 'undefined' && walletAddress) {
+          try {
+            const key = `cp_following_${walletAddress}`;
+            const cached: string[] = JSON.parse(localStorage.getItem(key) || '[]');
+            if (!cached.includes(traderAddr)) cached.push(traderAddr);
+            localStorage.setItem(key, JSON.stringify(cached));
+          } catch { /* ignore */ }
+          // Portfolio 즉시 갱신
+          setTimeout(() => window.dispatchEvent(new CustomEvent('portfolio:refresh')), 300);
         }
       } else {
         const errDetail = typeof data.detail === 'string'
@@ -168,12 +179,12 @@ function FollowButton({
   if (walletTimedOut) return (
     <div className="flex flex-col items-end gap-1">
       <button
-        onClick={onLoginNeeded}
+        onClick={() => window.location.reload()}
         className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-2.5 rounded-lg text-xs font-medium transition-colors min-h-[44px]"
       >
-        Reconnect
+        Refresh Page
       </button>
-      <span className="text-yellow-400 text-xs text-right">Wallet not ready</span>
+      <span className="text-yellow-400 text-xs text-right">Wallet creating…</span>
     </div>
   );
 

@@ -78,7 +78,7 @@ function FollowButton({
       return;
     }
     if (walletTimedOut || !walletAddress) {
-      setErrMsg('No Solana wallet. Please reconnect.');
+      setErrMsg('Wallet creating… please refresh the page');
       setTimeout(() => setErrMsg(''), 5000);
       return;
     }
@@ -99,8 +99,19 @@ function FollowButton({
       const data = await res.json();
       if (data.ok) {
         setDone(true);
+        // Portfolio 자동 갱신 트리거
         if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('portfolio:refresh'));
+          window.dispatchEvent(new CustomEvent('followSuccess'));
+        }
+        // localStorage 캐시 업데이트 (DB 리셋 대비)
+        if (typeof window !== 'undefined' && walletAddress) {
+          try {
+            const key = `cp_following_${walletAddress}`;
+            const cached: string[] = JSON.parse(localStorage.getItem(key) || '[]');
+            if (!cached.includes(trader.address)) cached.push(trader.address);
+            localStorage.setItem(key, JSON.stringify(cached));
+          } catch { /* ignore */ }
+          setTimeout(() => window.dispatchEvent(new CustomEvent('portfolio:refresh')), 300);
         }
       } else {
         const detail = typeof data.detail === 'string'
@@ -145,10 +156,10 @@ function FollowButton({
   if (walletTimedOut) return (
     <div className="flex flex-col items-center gap-1">
       <button
-        onClick={onLoginNeeded}
+        onClick={() => window.location.reload()}
         className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-2.5 rounded-lg text-xs font-medium transition-colors min-h-[44px]"
       >
-        Reconnect
+        Refresh Page
       </button>
       <span className="text-yellow-400 text-xs text-center">Wallet not ready</span>
     </div>

@@ -2,7 +2,7 @@
 
 import { usePrivy } from '@privy-io/react-auth';
 import { useSolanaWallet } from '@/lib/use-solana-wallet';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { getSolanaAddress, truncateAddress } from '@/lib/privy-helpers';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://copy-perp.onrender.com';
@@ -67,6 +67,7 @@ export function Portfolio() {
   const [loading, setLoading] = useState(false);
   const [unfollowing, setUnfollowing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const lastStartupAt = useRef<number>(0);
 
   
 
@@ -83,8 +84,37 @@ export function Portfolio() {
         fetch(`${API_URL}/pnl/${walletAddress}/trades?limit=20`).then(r => r.json()),
       ]);
 
+      const followingData = followingRes.status === 'fulfilled' ? (followingRes.value?.data ?? []) : [];
+
+      // DB 리셋 감지: DB에 following 없는데 localStorage 캐시 있으면 자동 재등록
+      if (followingData.length === 0 && typeof window !== 'undefined') {
+        const cached = localStorage.getItem(`cp_following_${walletAddress}`);
+        if (cached) {
+          try {
+            const cachedTraders: string[] = JSON.parse(cached);
+            if (cachedTraders.length > 0) {
+              // 백그라운드로 재등록
+              fetch(`${API_URL}/followers/onboard`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  follower_address: walletAddress,
+                  traders: cachedTraders,
+                  copy_ratio: 0.07,
+                  max_position_usdc: 50,
+                  strategy: 'safe',
+                }),
+              }).then(() => {
+                // 재등록 후 500ms 후 다시 조회
+                setTimeout(() => fetchData(), 500);
+              }).catch(() => {});
+            }
+          } catch { /* ignore */ }
+        }
+      }
+
       setState({
-        following: followingRes.status === 'fulfilled' ? (followingRes.value?.data ?? []) : [],
+        following: followingData,
         pnlSummary: pnlRes.status === 'fulfilled' ? pnlRes.value : null,
         byTrader: byTraderRes.status === 'fulfilled' ? (byTraderRes.value?.data ?? []) : [],
         recentTrades: tradesRes.status === 'fulfilled' ? (tradesRes.value?.data ?? []) : [],
@@ -98,6 +128,18 @@ export function Portfolio() {
 
   useEffect(() => {
     fetchData();
+    // Follow 성공 시 자동 갱신
+    const onFollow = () => { setTimeout(fetchData, 800); };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('followSuccess', onFollow);
+      return () => window.removeEventListener('followSuccess', onFollow);
+    }
+  }, [fetchData]);
+
+  // 30초마다 자동 갱신
+  useEffect(() => {
+    const timer = setInterval(fetchData, 30000);
+    return () => clearInterval(timer);
   }, [fetchData]);
 
   // Follow 이벤트 수신 시 자동 갱신
@@ -106,6 +148,42 @@ export function Portfolio() {
     window.addEventListener('portfolio:refresh', handler);
     return () => window.removeEventListener('portfolio:refresh', handler);
   }, [fetchData]);
+
+  // 서버 재시작(DB 리셋) 감지 → localStorage 팔로워 자동 재등록
+  useEffect(() => {
+    if (!walletAddress) return;
+    const check = async () => {
+      try {
+        const res = await fetch(`${API_URL}/healthz`);
+        const d = await res.json();
+        const sa: number = d.startup_at ?? 0;
+        if (sa && lastStartupAt.current && sa !== lastStartupAt.current) {
+          const cached = localStorage.getItem(`cp_following_${walletAddress}`);
+          if (cached) {
+            const traders: string[] = JSON.parse(cached);
+            if (traders.length > 0) {
+              await fetch(`${API_URL}/followers/onboard`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  follower_address: walletAddress,
+                  traders,
+                  copy_ratio: 0.07,
+                  max_position_usdc: 50,
+                  strategy: 'safe',
+                }),
+              });
+              setTimeout(() => fetchData(), 800);
+            }
+          }
+        }
+        if (sa) lastStartupAt.current = sa;
+      } catch { /* ignore */ }
+    };
+    check();
+    const t = setInterval(check, 60000);
+    return () => clearInterval(t);
+  }, [walletAddress, fetchData]);
 
   const handleUnfollow = async (traderAddress: string) => {
     if (!walletAddress || unfollowing) return;
@@ -171,27 +249,7 @@ export function Portfolio() {
 
   return (
     <div className="space-y-6">
-      {/* ── Agent Binding 안내 (팔로우했지만 거래 실패 시) ── */}
-      {following.length > 0 && safeNum(pnlSummary?.total_trades) === 0 && (
-        <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
-          <span className="text-2xl">⚠️</span>
-          <div className="flex-1 min-w-0">
-            <div className="text-amber-300 font-medium text-sm mb-1">Agent Binding Required</div>
-            <p className="text-amber-200/70 text-xs leading-relaxed">
-              You&apos;re following traders, but the copy engine needs permission to trade on your behalf.
-              Go to Pacifica Settings → Agents and authorize the agent wallet.
-            </p>
-            <a
-              href="https://testnet.app.pacifica.fi/settings/agents"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 mt-2 text-xs text-amber-300 hover:text-amber-200 underline underline-offset-2"
-            >
-              Open Pacifica Agent Settings ↗
-            </a>
-          </div>
-        </div>
-      )}
+
       {/* ── Stats 요약 ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[

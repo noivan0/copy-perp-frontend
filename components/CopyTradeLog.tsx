@@ -47,7 +47,6 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
   const [trades, setTrades] = useState<CopyTrade[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hasAgentIssue, setHasAgentIssue] = useState(false);
 
   useEffect(() => {
     const load = () => {
@@ -58,12 +57,6 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
           const data: CopyTrade[] = Array.isArray(d.data) ? d.data : [];
           setTrades(data);
           setSummary(d.summary || null);
-          // Agent Binding 이슈 감지
-          const hasUnauth = data.some(t =>
-            t.status === 'failed' &&
-            t.error_msg?.includes('unauthorized to sign on behalf')
-          );
-          setHasAgentIssue(hasUnauth);
         })
         .catch(() => {})
         .finally(() => setLoading(false));
@@ -87,22 +80,6 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
 
   return (
     <div className="space-y-4">
-      {/* Agent Binding 안내 배너 */}
-      {hasAgentIssue && (
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 flex items-start gap-3">
-          <span className="text-yellow-400 text-lg mt-0.5">⚠️</span>
-          <div>
-            <p className="text-yellow-400 font-medium text-sm">Agent Wallet Binding Required</p>
-            <p className="text-yellow-300/70 text-xs mt-1">
-              Copy trades are failing because your agent wallet needs permission to sign on your behalf.
-              Visit <a href="https://testnet.app.pacifica.fi/settings/agents" target="_blank" rel="noopener noreferrer"
-                className="underline text-yellow-300 hover:text-yellow-200">Pacifica Settings → Agents</a>{' '}
-              and bind wallet <code className="bg-yellow-500/20 px-1 rounded font-mono text-xs">9mxJJAQ…LZHWi</code>
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Summary Cards */}
       {summary && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
