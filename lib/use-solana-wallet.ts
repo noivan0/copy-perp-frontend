@@ -1,7 +1,8 @@
 /**
  * Privy Solana 지갑 주소 추출 훅
- * - Google 로그인 후 embedded wallet 생성까지 최대 15초 폴링
- * - timedOut 시 createWallet() 자동 재시도
+ * - Google 로그인 후 embedded wallet 생성까지 최대 10초 폴링
+ * - timedOut 시 Privy user ID (did:privy:xxx)를 fallback으로 반환
+ *   → 백엔드에서 did:privy: 형식을 유효 follower identifier로 허용
  */
 'use client';
 
@@ -31,7 +32,6 @@ export function useSolanaWallet() {
   const [timedOut, setTimedOut] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startRef = useRef<number>(0);
-  const prevUserRef = useRef(user);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
@@ -46,7 +46,6 @@ export function useSolanaWallet() {
       setTimedOut(false);
       stopPolling();
     }
-    prevUserRef.current = user;
   }, [user, address, stopPolling]);
 
   useEffect(() => {
@@ -66,7 +65,7 @@ export function useSolanaWallet() {
       return;
     }
 
-    // 주소 없음 → 폴링 시작 (최대 15초)
+    // Solana 지갑 없음 → 폴링 시작 (최대 10초)
     setLoading(true);
     setTimedOut(false);
     startRef.current = Date.now();
@@ -79,7 +78,11 @@ export function useSolanaWallet() {
         stopPolling();
         return;
       }
-      if (Date.now() - startRef.current > 15000) {
+      if (Date.now() - startRef.current > 10000) {
+        // 10초 후 Privy user ID로 fallback (did:privy:xxx)
+        // 백엔드에서 유효한 식별자로 허용됨
+        const fallback = user?.id;
+        setAddress(fallback ?? undefined);
         setLoading(false);
         setTimedOut(true);
         stopPolling();

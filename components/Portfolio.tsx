@@ -98,6 +98,13 @@ export function Portfolio() {
     fetchData();
   }, [fetchData]);
 
+  // Follow 이벤트 수신 시 자동 갱신
+  useEffect(() => {
+    const handler = () => fetchData();
+    window.addEventListener('portfolio:refresh', handler);
+    return () => window.removeEventListener('portfolio:refresh', handler);
+  }, [fetchData]);
+
   const handleUnfollow = async (traderAddress: string) => {
     if (!walletAddress || unfollowing) return;
     setUnfollowing(traderAddress);

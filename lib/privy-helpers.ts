@@ -1,19 +1,18 @@
 /**
  * Privy 헬퍼 함수
- * - Solana 임베디드 지갑 주소 추출
- * - 메시지 서명 (Builder Code approve용)
- * - 레퍼럴 코드 연동
+ * - Solana 임베디드/외부 지갑 주소 추출
+ * - Privy user ID fallback (지갑 없어도 식별자 확보)
  */
 
 import type { User } from '@privy-io/react-auth';
 
 /**
  * Privy user에서 Solana 지갑 주소 추출
- * 임베디드 지갑 우선, 없으면 외부 연결 지갑
+ * 없으면 Privy user ID (did:privy:xxx) fallback
  */
 export function getSolanaAddress(user: User | null): string | undefined {
   if (!user) return undefined;
-  
+
   const accounts = (user.linkedAccounts ?? []) as Array<{
     type: string;
     chainType?: string;
@@ -33,11 +32,24 @@ export function getSolanaAddress(user: User | null): string | undefined {
   );
   if (external?.address) return external.address;
 
-  // 3순위: chainType 없이 wallet 타입 (일부 Privy 버전 호환)
+  // 3순위: chainType 없는 wallet (일부 Privy 버전 호환)
   const anyWallet = accounts.find(
     a => a.type === 'wallet' && a.address && !a.chainType?.startsWith('eip155')
   );
-  return anyWallet?.address;
+  if (anyWallet?.address) return anyWallet.address;
+
+  // 4순위: Privy user ID (did:privy:xxx) — 지갑 없는 Google/Email 유저 fallback
+  // 백엔드에서 유효한 식별자로 사용 가능
+  return user.id ?? undefined;
+}
+
+/**
+ * 사용자가 실제 Solana 지갑을 갖고 있는지 (user.id fallback 제외)
+ */
+export function hasSolanaWallet(user: User | null): boolean {
+  if (!user) return false;
+  const accounts = (user.linkedAccounts ?? []) as Array<{ type: string; chainType?: string; address?: string }>;
+  return accounts.some(a => a.type === 'wallet' && a.chainType === 'solana' && a.address);
 }
 
 /**
@@ -45,7 +57,7 @@ export function getSolanaAddress(user: User | null): string | undefined {
  */
 export function getUserEmail(user: User | null): string | undefined {
   if (!user) return undefined;
-  return user.email?.address;
+  return (user as any).email?.address;
 }
 
 /**
@@ -56,36 +68,14 @@ export function getPrivyUserId(user: User | null): string | undefined {
 }
 
 /**
- * 온보딩 payload 생성
- * LoginModal → /followers/onboard 호출 시 사용
+ * 주소 축약 표시
  */
-export interface OnboardPayload {
-  follower_address: string;
-  copy_ratio: number;
-  max_position_usdc: number;
-  referrer_address?: string;
-  privy_user_id?: string;
-}
-
-export function buildOnboardPayload(
-  user: User,
-  options: {
-    copyRatio?: number;
-    maxPositionUsdc?: number;
-    referrerAddress?: string;
-    traderAddress?: string;
-  } = {}
-): OnboardPayload | null {
-  const address = getSolanaAddress(user);
-  if (!address) return null;
-  
-  return {
-    follower_address: address,
-    copy_ratio: options.copyRatio ?? 0.1,
-    max_position_usdc: options.maxPositionUsdc ?? 50,
-    referrer_address: options.referrerAddress,
-    privy_user_id: getPrivyUserId(user),
-  };
+export function truncateAddress(address: string, chars = 6): string {
+  if (!address) return '';
+  if (address.startsWith('did:privy:')) {
+    return `${address.slice(0, 14)}...`;
+  }
+  return `${address.slice(0, chars)}...${address.slice(-4)}`;
 }
 
 /**
@@ -93,12 +83,4 @@ export function buildOnboardPayload(
  */
 export function isValidSolanaAddress(address: string): boolean {
   return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
-}
-
-/**
- * 주소 축약 표시
- */
-export function truncateAddress(address: string, chars = 6): string {
-  if (!address) return '';
-  return `${address.slice(0, chars)}...${address.slice(-4)}`;
 }

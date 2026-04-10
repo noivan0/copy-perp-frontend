@@ -99,6 +99,9 @@ function FollowButton({
       const data = await res.json();
       if (data.ok) {
         setDone(true);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('portfolio:refresh'));
+        }
       } else {
         const detail = typeof data.detail === 'string'
           ? data.detail

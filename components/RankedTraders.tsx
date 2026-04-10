@@ -100,7 +100,7 @@ function FollowButton({
       setTimeout(() => setState('idle'), 3000);
       return;
     }
-    if (walletTimedOut || !walletAddress) {
+    if (!walletAddress) {
       setMsg('Wallet not ready — please reconnect your wallet');
       setState('error');
       setTimeout(() => setState('idle'), 6000);
@@ -123,6 +123,10 @@ function FollowButton({
       const data = await res.json();
       if (data.ok) {
         setState('done');
+        // Portfolio 컴포넌트에 갱신 이벤트 전달
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('portfolio:refresh'));
+        }
       } else {
         const errDetail = typeof data.detail === 'string'
           ? data.detail
@@ -204,9 +208,13 @@ function TraderCard({ trader, rank, authenticated, walletAddress, walletLoading,
 
   const gradeStyle = GRADE_COLORS[trader.grade] || GRADE_COLORS['D'];
   const ringStyle = GRADE_RING[trader.grade] || '';
-  const roi30 = safeNum(trader.raw?.roi_30d);
+  // roi_30d: raw 값 우선, 없으면 pnl/equity로 계산
+  const rawRoi = safeNum(trader.raw?.roi_30d);
   const pnl30 = safeNum(trader.raw?.pnl_30d);
   const equity = safeNum(trader.raw?.equity);
+  const roi30 = rawRoi !== 0 ? rawRoi
+    : (equity > 0 && pnl30 !== 0) ? pnl30 / (equity - pnl30) * 100
+    : 0;
 
   return (
     <div className={`bg-gray-900 border border-gray-800 rounded-xl overflow-hidden ${ringStyle} hover:border-gray-700 transition-all`}>
