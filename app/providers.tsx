@@ -20,7 +20,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
         // Explicitly allow our domains
         externalWallets: {
-          solana: { connectors: [] },
+          solana: { connectors: [] as never },
         },
       }}
     >

@@ -2,11 +2,27 @@
 
 import { useState, useEffect } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
-import bs58 from 'bs58';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://copy-perp.onrender.com';
 const BUILDER_CODE = 'noivan';
 const MAX_FEE_RATE = '0.0005';
+
+// Safe bs58 encode without importing the package (avoids CJS/ESM issues)
+function bs58Encode(bytes: Uint8Array): string {
+  const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  let num = BigInt('0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(''));
+  let result = '';
+  const base = BigInt(58);
+  while (num > 0n) {
+    result = ALPHABET[Number(num % base)] + result;
+    num = num / base;
+  }
+  for (const byte of bytes) {
+    if (byte !== 0) break;
+    result = '1' + result;
+  }
+  return result;
+}
 
 interface Props {
   onApproved: () => void;
@@ -69,13 +85,13 @@ export function BuilderCodeApproval({ onApproved }: Props) {
       if (provider) {
         const msgBytes = new TextEncoder().encode(prep.message);
         const { signature: sig } = await provider.signMessage(msgBytes);
-        signature = bs58.encode(sig instanceof Uint8Array ? sig : new Uint8Array(sig));
+        signature = bs58Encode(sig instanceof Uint8Array ? sig : new Uint8Array(sig));
       } else {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { signature: sig } = await (privyWallet as any).sign(
           new TextEncoder().encode(prep.message)
         );
-        signature = bs58.encode(sig instanceof Uint8Array ? sig : new Uint8Array(sig));
+        signature = bs58Encode(sig instanceof Uint8Array ? sig : new Uint8Array(sig));
       }
 
       const approveRes = await fetch(`${API_URL}/builder/approve`, {
