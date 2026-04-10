@@ -4,12 +4,14 @@
 import { useEffect, useState } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { getSolanaAddress } from '@/lib/privy-helpers';
+import { useSolanaWallet } from '@/lib/use-solana-wallet';
 import { getReferralLink, extractRefCode, fuulPageview, fuulConnectWallet } from '@/lib/fuul';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://copy-perp.onrender.com';
 
 export function ReferralBanner() {
   const { user, authenticated } = usePrivy();
+  const { loading: walletLoading } = useSolanaWallet();
   const [copied, setCopied] = useState(false);
   const [points, setPoints] = useState<number | null>(null);
   const [refCode] = useState(() => typeof window !== 'undefined' ? extractRefCode() : null);
@@ -74,10 +76,10 @@ export function ReferralBanner() {
         )}
         <button
           onClick={copyLink}
-          disabled={!referralLink}
+          disabled={!referralLink || walletLoading}
           className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
         >
-          {copied ? '✅ Copied!' : 'Copy Link'}
+          {walletLoading ? 'Loading…' : copied ? '✅ Copied!' : 'Copy Link'}
         </button>
       </div>
     </div>

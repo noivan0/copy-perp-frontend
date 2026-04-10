@@ -2,10 +2,12 @@
 
 import { usePrivy } from '@privy-io/react-auth';
 import { getSolanaAddress } from '@/lib/privy-helpers';
+import { useSolanaWallet } from '@/lib/use-solana-wallet';
 
 export function ConnectButton() {
   const { ready, authenticated, logout, login, user } = usePrivy();
   const address = getSolanaAddress(user ?? null);
+  const { loading: walletLoading } = useSolanaWallet();
 
   if (!ready) {
     return (
@@ -35,7 +37,7 @@ export function ConnectButton() {
       <div className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
         <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
         <span className="text-sm text-gray-300 font-mono">
-          {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connected'}
+          {walletLoading ? '⏳ Wallet…' : address ? `${address.slice(0, 6)}…${address.slice(-4)}` : 'Connected'}
         </span>
       </div>
       <button
