@@ -1,4 +1,4 @@
-/* v2 */
+/* v3 */
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -50,6 +50,14 @@ const GRADE_RING: Record<string, string> = {
   D: '',
 };
 
+// Grade thresholds for tooltip
+const GRADE_DESC: Record<string, string> = {
+  S: 'Elite (CRS≥80) — Max 15% copy ratio',
+  A: 'Top (CRS≥65) — Max 10% copy ratio',
+  B: 'Qualified (CRS≥50) — Max 7% copy ratio',
+  C: 'Caution (CRS≥35) — Max 4% copy ratio',
+};
+
 function CRSBar({ value, label, color }: { value: number; label: string; color: string }) {
   return (
     <div className="flex items-center gap-2 text-xs">
@@ -65,13 +73,88 @@ function CRSBar({ value, label, color }: { value: number; label: string; color: 
   );
 }
 
-function TraderCard({ trader, rank, onFollow }: {
+function FollowButton({
+  traderAddr,
+  authenticated,
+  followerAddress,
+  onLoginNeeded,
+}: {
+  traderAddr: string;
+  authenticated: boolean;
+  followerAddress?: string;
+  onLoginNeeded: () => void;
+}) {
+  const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [msg, setMsg] = useState('');
+
+  const handleClick = async () => {
+    if (!authenticated) { onLoginNeeded(); return; }
+    if (!followerAddress) {
+      setMsg('Wallet not ready — please wait');
+      setState('error');
+      setTimeout(() => setState('idle'), 3000);
+      return;
+    }
+    setState('loading');
+    try {
+      const res = await fetch(`${API_URL}/followers/onboard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          follower_address: followerAddress,
+          traders: [traderAddr],
+          copy_ratio: 0.07,
+          max_position_usdc: 50,
+          strategy: 'safe',
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setState('done');
+      } else {
+        setMsg(data.detail || 'Failed');
+        setState('error');
+        setTimeout(() => setState('idle'), 3000);
+      }
+    } catch {
+      setMsg('Network error');
+      setState('error');
+      setTimeout(() => setState('idle'), 3000);
+    }
+  };
+
+  if (state === 'done') return (
+    <span className="text-green-400 text-sm font-medium px-2">✅ Following</span>
+  );
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <button
+        onClick={handleClick}
+        disabled={state === 'loading'}
+        className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1.5"
+      >
+        {state === 'loading' ? (
+          <><span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin inline-block" /> Following...</>
+        ) : (
+          authenticated ? 'Follow' : 'Sign in to Follow'
+        )}
+      </button>
+      {state === 'error' && msg && (
+        <span className="text-xs text-red-400">{msg}</span>
+      )}
+    </div>
+  );
+}
+
+function TraderCard({ trader, rank, authenticated, followerAddress, onLoginNeeded }: {
   trader: CRSTrader;
   rank: number;
-  onFollow: (addr: string) => void;
+  authenticated: boolean;
+  followerAddress?: string;
+  onLoginNeeded: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const { authenticated, login } = usePrivy();
 
   const gradeStyle = GRADE_COLORS[trader.grade] || GRADE_COLORS['D'];
   const ringStyle = GRADE_RING[trader.grade] || '';
@@ -94,7 +177,10 @@ function TraderCard({ trader, rank, onFollow }: {
               <span className="font-mono text-sm text-white">
                 {trader.address.slice(0,8)}…{trader.address.slice(-4)}
               </span>
-              <span className={`px-1.5 py-0.5 text-xs font-bold rounded border ${gradeStyle}`}>
+              <span
+                className={`px-1.5 py-0.5 text-xs font-bold rounded border cursor-help ${gradeStyle}`}
+                title={GRADE_DESC[trader.grade] ?? ''}
+              >
                 {trader.grade}
               </span>
             </div>
@@ -110,12 +196,12 @@ function TraderCard({ trader, rank, onFollow }: {
             <div className="text-xs text-gray-500">CRS</div>
           </div>
           {!trader.disqualified && (
-            <button
-              onClick={() => onFollow(trader.address)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
-            >
-              {authenticated ? 'Follow' : 'Follow'}
-            </button>
+            <FollowButton
+              traderAddr={trader.address}
+              authenticated={authenticated}
+              followerAddress={followerAddress}
+              onLoginNeeded={onLoginNeeded}
+            />
           )}
         </div>
       </div>
@@ -206,39 +292,50 @@ function TraderCard({ trader, rank, onFollow }: {
 
 export function RankedTraders() {
   const [traders, setTraders] = useState<CRSTrader[]>([]);
+  const [allTraders, setAllTraders] = useState<CRSTrader[]>([]);
   const [loading, setLoading] = useState(true);
   const [gradeFilter, setGradeFilter] = useState('B');
   const [showDisqualified, setShowDisqualified] = useState(false);
+  const [availableGrades, setAvailableGrades] = useState<Set<string>>(new Set());
 
+  const { authenticated, user, login } = usePrivy();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const solanaWallet = (user?.linkedAccounts as any[])?.find(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (a: any) => a.type === 'wallet' && a.chainType === 'solana'
+  );
+  const followerAddress: string | undefined = solanaWallet?.address;
 
   const fetchRanked = useCallback(async () => {
     try {
-      // Fetch both ranked (CRS) and full traders list (has real roi_30d) in parallel
       const [rankedRes, tradersRes] = await Promise.all([
-        fetch(`${API_URL}/traders/ranked?limit=50&exclude_disqualified=${!showDisqualified}`),
+        fetch(`${API_URL}/traders/ranked?limit=50&min_grade=C&exclude_disqualified=${!showDisqualified}`),
         fetch(`${API_URL}/traders?limit=200`),
       ]);
       const rankedData = await rankedRes.json();
       const tradersData = await tradersRes.json();
 
-      // Build address → roi_30d map from full traders list
       const roiMap: Record<string, number> = {};
       for (const t of (tradersData.data || [])) {
-        if (t.address && typeof t.roi_30d === 'number') {
-          roiMap[t.address] = t.roi_30d;
-        }
+        if (t.address && typeof t.roi_30d === 'number') roiMap[t.address] = t.roi_30d;
       }
 
-      // Merge roi_30d into ranked traders (ranked API returns roi_30d=0)
       const merged: CRSTrader[] = (rankedData.data || []).map((t: CRSTrader) => ({
         ...t,
-        raw: {
-          ...t.raw,
-          roi_30d: roiMap[t.address] ?? t.raw.roi_30d ?? 0,
-        },
+        raw: { ...t.raw, roi_30d: roiMap[t.address] ?? t.raw.roi_30d ?? 0 },
       }));
 
-      setTraders(merged);
+      setAllTraders(merged);
+
+      // 실제 존재하는 등급 계산
+      const grades = new Set(merged.map(t => t.grade));
+      setAvailableGrades(grades);
+
+      // 필터 적용: gradeFilter 이상의 CRS 등급만
+      const GRADE_ORDER = ['S','A','B','C','D'];
+      const filterIdx = GRADE_ORDER.indexOf(gradeFilter);
+      const filtered = merged.filter(t => GRADE_ORDER.indexOf(t.grade) >= 0 && GRADE_ORDER.indexOf(t.grade) <= filterIdx);
+      setTraders(filtered);
     } catch {
       setTraders([]);
     } finally {
@@ -253,54 +350,40 @@ export function RankedTraders() {
     return () => clearInterval(t);
   }, [fetchRanked]);
 
-  const { authenticated, user, login } = usePrivy();
-  const solanaWallet = (user?.linkedAccounts as any[])?.find(
-    (a: any) => a.type === 'wallet' && a.chainType === 'solana'
-  );
-  const followerAddress: string | undefined = solanaWallet?.address;
-
-  const handleFollow = async (addr: string) => {
-    if (!authenticated) {
-      login();
-      return;
-    }
-    if (!followerAddress) return;
-    try {
-      const res = await fetch(`${API_URL}/followers/onboard`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          follower_address: followerAddress,
-          traders: [addr],
-          copy_ratio: 0.1,
-          max_position_usdc: 50,
-        }),
-      });
-      const data = await res.json();
-      if (data.ok) alert(`✅ Now following ${addr.slice(0,8)}...`);
-    } catch (e) {
-      console.error('Follow failed:', e);
-    }
-  };
+  // 필터 변경 시 allTraders에서 재필터링
+  useEffect(() => {
+    if (allTraders.length === 0) return;
+    const GRADE_ORDER = ['S','A','B','C','D'];
+    const filterIdx = GRADE_ORDER.indexOf(gradeFilter);
+    const filtered = allTraders.filter(t => GRADE_ORDER.indexOf(t.grade) <= filterIdx);
+    setTraders(filtered);
+  }, [gradeFilter, allTraders]);
 
   return (
     <>
-
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div className="flex items-center gap-2">
-          {(['S','A','B','C']).map(g => (
-            <button
-              key={g}
-              onClick={() => setGradeFilter(g)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
-                gradeFilter === g
-                  ? GRADE_COLORS[g]
-                  : 'border-gray-700 text-gray-500 hover:text-gray-300'
-              }`}
-            >
-              {g}+
-            </button>
-          ))}
+          {(['S','A','B','C']).map(g => {
+            const hasTraders = availableGrades.has(g);
+            return (
+              <button
+                key={g}
+                onClick={() => setGradeFilter(g)}
+                disabled={!hasTraders && g !== 'B' && g !== 'C'}
+                title={GRADE_DESC[g]}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
+                  gradeFilter === g
+                    ? GRADE_COLORS[g]
+                    : hasTraders
+                      ? 'border-gray-700 text-gray-400 hover:text-gray-200'
+                      : 'border-gray-800 text-gray-700 cursor-not-allowed'
+                }`}
+              >
+                {g}+
+                {!hasTraders && <span className="ml-1 text-xs opacity-50">0</span>}
+              </button>
+            );
+          })}
         </div>
         <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer">
           <input
@@ -320,18 +403,26 @@ export function RankedTraders() {
       ) : traders.length === 0 ? (
         <div className="text-center py-16 text-gray-500">
           <div className="text-4xl mb-3">🔍</div>
-          <p>No traders found for the selected grade</p>
+          <p className="mb-1">No traders found for grade <strong>{gradeFilter}+</strong></p>
+          <p className="text-xs text-gray-600">Try selecting B+ or C+ to see available traders</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {traders.map((t, i) => (
-            <TraderCard key={t.address} trader={t} rank={i + 1} onFollow={handleFollow} />
+            <TraderCard
+              key={t.address}
+              trader={t}
+              rank={i + 1}
+              authenticated={authenticated}
+              followerAddress={followerAddress}
+              onLoginNeeded={login}
+            />
           ))}
         </div>
       )}
 
       <div className="mt-6 text-xs text-gray-600 text-center">
-        CRS (Composite Reliability Score) — 5-dimension evaluation: Profitability · Risk · Momentum · Consistency · Copyability · Refreshes every 60s
+        CRS: Profitability(30%) · Risk(25%) · Momentum(25%) · Consistency(15%) · Copyability(5%) · Updates every 60s
       </div>
     </>
   );
