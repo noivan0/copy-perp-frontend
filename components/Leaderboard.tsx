@@ -16,8 +16,9 @@ interface Trader {
   profit_factor: number;
   score: number;
   pnl_30d: number;
-  is_recommended: boolean;
-  active: boolean;
+  is_recommended?: boolean;
+  // active: 백엔드에서 int(0/1) 또는 boolean 모두 가능
+  active: number | boolean;
 }
 
 const TOP5_RECOMMENDED = new Set([
@@ -123,7 +124,7 @@ export function Leaderboard() {
       const res = await fetch(`${API_URL}/traders?limit=20`);
       const data = await res.json();
       // active는 int(0/1) 또는 boolean 모두 처리
-      setTraders((data.data || []).filter((t: Trader) => t.active && t.active !== 0));
+      setTraders((data.data || []).filter((t: Trader) => Boolean(t.active)));
     } catch {
       // API 없으면 빈 배열
     } finally {
