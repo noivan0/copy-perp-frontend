@@ -3,7 +3,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
-import { LoginModal } from './LoginModal';
 
 function safeNum(v: unknown, fb = 0): number { const n = Number(v); return isFinite(n) ? n : fb; }
 
@@ -107,11 +106,9 @@ function FollowButton({
 }
 
 export function Leaderboard() {
-  const { authenticated, user } = usePrivy();
+  const { authenticated, login, user } = usePrivy();
   const [traders, setTraders] = useState<Trader[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loginModal, setLoginModal] = useState(false);
-  const [followTarget, setFollowTarget] = useState<string | undefined>();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const solanaWallet = (user?.linkedAccounts as any[])?.find(
@@ -139,8 +136,7 @@ export function Leaderboard() {
   }, [fetchTraders]);
 
   const handleFollowClick = (addr: string) => {
-    setFollowTarget(addr);
-    setLoginModal(true);
+    if (login) login();
   };
 
   if (loading) return (
@@ -158,11 +154,6 @@ export function Leaderboard() {
 
   return (
     <>
-      <LoginModal
-        isOpen={loginModal}
-        onClose={() => { setLoginModal(false); setFollowTarget(undefined); }}
-        followAfterLogin={followTarget}
-      />
 
       <div className="overflow-x-auto">
         <table className="w-full">
