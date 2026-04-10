@@ -73,7 +73,7 @@ export default function Home() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-white">Full Leaderboard</h2>
-            <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">Live</span>
+            <span className="text-xs text-green-500 bg-green-500/10 px-2 py-1 rounded">● Live · 30s</span>
           </div>
           <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
             <Leaderboard />
@@ -84,7 +84,7 @@ export default function Home() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-white">Live Copy Trade Log</h2>
-            <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">30s refresh</span>
+            <span className="text-xs text-green-500 bg-green-500/10 px-2 py-1 rounded">● Live · 30s</span>
           </div>
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
             <CopyTradeLog />
