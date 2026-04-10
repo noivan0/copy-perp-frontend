@@ -19,8 +19,12 @@ interface CopyTrade {
 
 interface Summary {
   filled: number;
+  total: number;
+  failed: number;
   total_volume_usdc: number;
-  total_pnl_usdc: number;
+  total_pnl_usdc: number;      // 프론트 표시용 alias
+  realized_pnl_usdc: number;   // 백엔드 실제 필드명
+  win_rate_pct: number;
 }
 
 export function CopyTradeLog({ follower }: { follower?: string }) {
@@ -67,14 +71,20 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
           <div className="bg-gray-800/50 rounded-lg p-3 text-center">
             <div className="text-xs text-gray-400">총 거래량</div>
             <div className="text-xl font-bold text-indigo-400">
-              ${summary.total_volume_usdc.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              ${(summary.total_volume_usdc ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
             </div>
           </div>
           <div className="bg-gray-800/50 rounded-lg p-3 text-center">
             <div className="text-xs text-gray-400">총 PnL</div>
-            <div className={`text-xl font-bold ${summary.total_pnl_usdc >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {summary.total_pnl_usdc >= 0 ? '+' : ''}{summary.total_pnl_usdc.toFixed(2)} USDC
-            </div>
+            {(() => {
+              // 백엔드는 realized_pnl_usdc, 폴백으로 total_pnl_usdc
+              const pnl = summary.realized_pnl_usdc ?? summary.total_pnl_usdc ?? 0;
+              return (
+                <div className={`text-xl font-bold ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)} USDC
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

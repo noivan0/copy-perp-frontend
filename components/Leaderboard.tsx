@@ -122,7 +122,8 @@ export function Leaderboard() {
     try {
       const res = await fetch(`${API_URL}/traders?limit=20`);
       const data = await res.json();
-      setTraders((data.data || []).filter((t: Trader) => t.active));
+      // active는 int(0/1) 또는 boolean 모두 처리
+      setTraders((data.data || []).filter((t: Trader) => t.active && t.active !== 0));
     } catch {
       // API 없으면 빈 배열
     } finally {
