@@ -51,7 +51,7 @@ const GRADE_RING: Record<string, string> = {
 function CRSBar({ value, label, color }: { value: number; label: string; color: string }) {
   return (
     <div className="flex items-center gap-2 text-xs">
-      <span className="text-gray-500 w-20 text-right shrink-0">{label}</span>
+      <span className="text-gray-500 w-24 text-right shrink-0">{label}</span>
       <div className="flex-1 bg-gray-800 rounded-full h-1.5 overflow-hidden">
         <div
           className={`h-full rounded-full transition-all ${color}`}
@@ -79,18 +79,14 @@ function TraderCard({ trader, rank, onFollow }: {
 
   return (
     <div className={`bg-gray-900 border border-gray-800 rounded-xl overflow-hidden ${ringStyle} hover:border-gray-700 transition-all`}>
-      {/* 헤더 */}
       <div className="p-4 flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          {/* 순위 */}
           <div className="text-gray-600 font-mono text-sm shrink-0 w-6 text-center">
             {rank <= 3 ? ['🥇','🥈','🥉'][rank-1] : `#${rank}`}
           </div>
-          {/* 아바타 */}
           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-xs font-bold text-white shrink-0">
             {trader.address.slice(0,2).toUpperCase()}
           </div>
-          {/* 주소 + 등급 */}
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-mono text-sm text-white">
@@ -106,7 +102,6 @@ function TraderCard({ trader, rank, onFollow }: {
           </div>
         </div>
 
-        {/* CRS 점수 + 팔로우 */}
         <div className="flex items-center gap-3 shrink-0">
           <div className="text-right">
             <div className="text-2xl font-bold text-white">{trader.crs.toFixed(0)}</div>
@@ -114,19 +109,15 @@ function TraderCard({ trader, rank, onFollow }: {
           </div>
           {!trader.disqualified && (
             <button
-              onClick={() => {
-                if (!authenticated) onFollow(trader.address);
-                else onFollow(trader.address);
-              }}
+              onClick={() => onFollow(trader.address)}
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
             >
-              팔로우
+              {authenticated ? 'Follow' : 'Follow'}
             </button>
           )}
         </div>
       </div>
 
-      {/* 핵심 지표 */}
       <div className="grid grid-cols-3 gap-px bg-gray-800 border-t border-gray-800">
         <div className="bg-gray-900 p-3 text-center">
           <div className={`text-lg font-bold ${roi30 >= 0 ? 'text-green-400' : 'text-red-400'}`}>
@@ -144,17 +135,16 @@ function TraderCard({ trader, rank, onFollow }: {
           <div className="text-lg font-bold text-indigo-300">
             {trader.copy_ratio_pct}%
           </div>
-          <div className="text-xs text-gray-500">추천 비율</div>
+          <div className="text-xs text-gray-500">Suggested Ratio</div>
         </div>
       </div>
 
-      {/* 강점/경고 요약 */}
       {(trader.strengths?.length > 0 || trader.warnings?.length > 0 || trader.disqualified) && (
         <div className="px-4 py-3 border-t border-gray-800/50">
           {trader.disqualified ? (
             <div className="text-xs text-red-400 flex items-center gap-1.5">
               <span>❌</span>
-              <span>{trader.disq_reason || '하드 필터 제외'}</span>
+              <span>{trader.disq_reason || 'Filtered out'}</span>
             </div>
           ) : (
             <div className="flex flex-wrap gap-1.5">
@@ -173,41 +163,37 @@ function TraderCard({ trader, rank, onFollow }: {
         </div>
       )}
 
-      {/* 상세 확장 토글 */}
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full py-2 text-xs text-gray-600 hover:text-gray-400 border-t border-gray-800/50 transition-colors flex items-center justify-center gap-1"
       >
-        {expanded ? '접기 ▲' : '상세 분석 ▼'}
+        {expanded ? 'Collapse ▲' : 'Full Analysis ▼'}
       </button>
 
       {expanded && (
         <div className="px-4 pb-4 space-y-3 border-t border-gray-800/50 pt-3">
-          {/* 5차원 스코어 바 */}
           <div className="space-y-1.5">
-            <div className="text-xs text-gray-500 mb-2 font-medium">CRS 5차원 분석</div>
-            <CRSBar value={trader.profitability_score ?? 0} label="수익성" color="bg-green-500" />
-            <CRSBar value={trader.risk_score ?? 0} label="위험관리" color="bg-blue-500" />
-            <CRSBar value={trader.momentum_score ?? 0} label="모멘텀" color="bg-purple-500" />
-            <CRSBar value={trader.consistency_score ?? 0} label="일관성" color="bg-indigo-500" />
-            <CRSBar value={trader.copyability_score ?? 0} label="복사가능" color="bg-cyan-500" />
+            <div className="text-xs text-gray-500 mb-2 font-medium">CRS 5-Dimension Analysis</div>
+            <CRSBar value={trader.profitability_score ?? 0} label="Profitability" color="bg-green-500" />
+            <CRSBar value={trader.risk_score ?? 0} label="Risk Mgmt" color="bg-blue-500" />
+            <CRSBar value={trader.momentum_score ?? 0} label="Momentum" color="bg-purple-500" />
+            <CRSBar value={trader.consistency_score ?? 0} label="Consistency" color="bg-indigo-500" />
+            <CRSBar value={trader.copyability_score ?? 0} label="Copyability" color="bg-cyan-500" />
           </div>
 
-          {/* 원시 지표 */}
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="bg-gray-800 rounded-lg p-2">
-              <div className="text-gray-500">자산</div>
+              <div className="text-gray-500">Equity</div>
               <div className="text-white font-mono">${equity.toLocaleString(undefined, {maximumFractionDigits: 0})}</div>
             </div>
             <div className="bg-gray-800 rounded-lg p-2">
-              <div className="text-gray-500">일관성</div>
+              <div className="text-gray-500">Consistency</div>
               <div className="text-white font-mono">{trader.raw.consistency ?? '—'}</div>
             </div>
           </div>
 
-          {/* 지갑 주소 전체 */}
           <div className="bg-gray-800 rounded-lg p-2">
-            <div className="text-xs text-gray-500 mb-1">지갑 주소</div>
+            <div className="text-xs text-gray-500 mb-1">Wallet Address</div>
             <div className="font-mono text-xs text-gray-300 break-all">{trader.address}</div>
           </div>
         </div>
@@ -226,11 +212,32 @@ export function RankedTraders() {
 
   const fetchRanked = useCallback(async () => {
     try {
-      const res = await fetch(
-        `${API_URL}/traders/ranked?limit=30&min_grade=${gradeFilter}&exclude_disqualified=${!showDisqualified}`
-      );
-      const data = await res.json();
-      setTraders(data.data || []);
+      // Fetch both ranked (CRS) and full traders list (has real roi_30d) in parallel
+      const [rankedRes, tradersRes] = await Promise.all([
+        fetch(`${API_URL}/traders/ranked?limit=30&min_grade=${gradeFilter}&exclude_disqualified=${!showDisqualified}`),
+        fetch(`${API_URL}/traders?limit=200`),
+      ]);
+      const rankedData = await rankedRes.json();
+      const tradersData = await tradersRes.json();
+
+      // Build address → roi_30d map from full traders list
+      const roiMap: Record<string, number> = {};
+      for (const t of (tradersData.data || [])) {
+        if (t.address && typeof t.roi_30d === 'number') {
+          roiMap[t.address] = t.roi_30d;
+        }
+      }
+
+      // Merge roi_30d into ranked traders (ranked API returns roi_30d=0)
+      const merged: CRSTrader[] = (rankedData.data || []).map((t: CRSTrader) => ({
+        ...t,
+        raw: {
+          ...t.raw,
+          roi_30d: roiMap[t.address] ?? t.raw.roi_30d ?? 0,
+        },
+      }));
+
+      setTraders(merged);
     } catch {
       setTraders([]);
     } finally {
@@ -259,7 +266,6 @@ export function RankedTraders() {
         onSuccess={() => setLoginModal(false)}
       />
 
-      {/* 필터 툴바 */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div className="flex items-center gap-2">
           {(['S','A','B','C']).map(g => (
@@ -272,7 +278,7 @@ export function RankedTraders() {
                   : 'border-gray-700 text-gray-500 hover:text-gray-300'
               }`}
             >
-              {g}등급+
+              {g}+
             </button>
           ))}
         </div>
@@ -283,11 +289,10 @@ export function RankedTraders() {
             onChange={e => setShowDisqualified(e.target.checked)}
             className="rounded"
           />
-          제외 트레이더 표시
+          Show filtered traders
         </label>
       </div>
 
-      {/* 목록 */}
       {loading ? (
         <div className="flex justify-center py-16">
           <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
@@ -295,7 +300,7 @@ export function RankedTraders() {
       ) : traders.length === 0 ? (
         <div className="text-center py-16 text-gray-500">
           <div className="text-4xl mb-3">🔍</div>
-          <p>선택한 등급의 트레이더가 없습니다</p>
+          <p>No traders found for the selected grade</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -305,9 +310,8 @@ export function RankedTraders() {
         </div>
       )}
 
-      {/* 하단 안내 */}
       <div className="mt-6 text-xs text-gray-600 text-center">
-        CRS(Composite Reliability Score) — 수익성·위험관리·모멘텀·일관성·복사가능성 5차원 평가 · 60초 자동 갱신
+        CRS (Composite Reliability Score) — 5-dimension evaluation: Profitability · Risk · Momentum · Consistency · Copyability · Refreshes every 60s
       </div>
     </>
   );

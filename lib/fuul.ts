@@ -55,7 +55,7 @@ export async function fuulTrackFollow(
   followerAddress: string,
   traderAddress: string,
 ): Promise<void> {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://copy-perp.onrender.com';
   if (IS_MOCK) {
     console.log('[Fuul Mock] follow:', followerAddress.slice(0, 8), '->', traderAddress.slice(0, 8));
     return;

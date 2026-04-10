@@ -17,7 +17,7 @@ import { usePrivy, useWallets } from '@privy-io/react-auth';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const bs58 = require('bs58') as { encode: (bytes: Uint8Array) => string; decode: (str: string) => Uint8Array };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://copy-perp.onrender.com';
 const BUILDER_CODE = 'noivan';
 const MAX_FEE_RATE = '0.0005'; // 0.05%
 

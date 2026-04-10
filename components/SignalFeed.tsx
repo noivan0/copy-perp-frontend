@@ -2,105 +2,106 @@
 
 import { useEffect, useState } from 'react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://copy-perp.onrender.com';
 
-interface MarketSignal {
+interface FundingSignal {
   symbol: string;
-  funding: string;
   mark: string;
   oracle: string;
+  funding: string;
   open_interest: string;
+  volume_24h: string;
+}
+
+interface DivergenceSignal {
+  symbol: string;
+  mark: string;
+  oracle: string;
+  divergence_pct: number;
 }
 
 export function SignalFeed() {
-  const [funding, setFunding] = useState<MarketSignal[]>([]);
-  const [divergence, setDivergence] = useState<MarketSignal[]>([]);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [funding, setFunding] = useState<FundingSignal[]>([]);
+  const [divergence, setDivergence] = useState<DivergenceSignal[]>([]);
+  const [updatedAt, setUpdatedAt] = useState('');
 
-  async function fetchSignals() {
-    try {
-      const res = await fetch(`${API_URL}/signals?top_n=5`);
-      const d = await res.json();
-      setFunding(d.funding_extremes || []);
-      setDivergence(d.oracle_mark_divergence || []);
-      setLastUpdate(new Date());
-    } catch {}
-  }
+  const fetchSignals = () => {
+    fetch(`${API_URL}/signals?top_n=5`)
+      .then(r => r.json())
+      .then(d => {
+        setFunding(d.funding_extremes || []);
+        setDivergence(d.oracle_mark_divergence || []);
+        setUpdatedAt(new Date().toLocaleTimeString());
+      })
+      .catch(() => {});
+  };
 
   useEffect(() => {
     fetchSignals();
-    const t = setInterval(fetchSignals, 5000);
-    return () => clearInterval(t);
+    const iv = setInterval(fetchSignals, 5000);
+    return () => clearInterval(iv);
   }, []);
-
-  const FundingBadge = ({ value }: { value: string }) => {
-    const v = parseFloat(value) * 100;
-    const color = v > 0 ? 'text-green-400 bg-green-400/10' : 'text-red-400 bg-red-400/10';
-    return (
-      <span className={`font-mono text-xs px-2 py-0.5 rounded ${color}`}>
-        {v > 0 ? '+' : ''}{v.toFixed(4)}%
-      </span>
-    );
-  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {/* 펀딩비 극단 */}
+      {/* Funding Rate Extremes */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-semibold text-white">⚡ Funding Rate Extremes</h3>
-          <span className="text-xs text-gray-500">
-            {lastUpdate ? lastUpdate.toLocaleTimeString() : '—'}
-          </span>
+          <span className="text-xs text-gray-500">{updatedAt || '—'}</span>
         </div>
         <div className="space-y-3">
-          {funding.map(m => (
-            <div key={m.symbol} className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="font-mono font-medium text-white w-16">{m.symbol}</span>
-                <FundingBadge value={m.funding} />
-              </div>
-              <div className="text-right text-xs text-gray-500">
-                OI: {parseFloat(m.open_interest || '0').toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </div>
-            </div>
-          ))}
-          {funding.length === 0 && (
-            <p className="text-gray-600 text-sm text-center py-4">Connecting to WS...</p>
+          {funding.length === 0 ? (
+            <p className="text-gray-600 text-sm text-center py-4">Loading...</p>
+          ) : (
+            funding.slice(0, 5).map(f => {
+              const rate = parseFloat(f.funding);
+              const isHigh = rate > 0.01;
+              const isLow = rate < -0.01;
+              return (
+                <div key={f.symbol} className="flex justify-between items-center">
+                  <span className="text-white text-sm font-medium">{f.symbol}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-gray-400 text-xs">${parseFloat(f.mark).toFixed(4)}</span>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
+                      isHigh ? 'bg-red-500/20 text-red-400' :
+                      isLow ? 'bg-emerald-500/20 text-emerald-400' :
+                      'bg-gray-700 text-gray-400'
+                    }`}>
+                      {(rate * 100).toFixed(4)}%
+                    </span>
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
         <p className="text-xs text-gray-600 mt-4">
-          Extreme funding = potential reversal signal. High positive = longs overloaded.
+          Extreme funding = potential reversal signal. High positive → longs overloaded.
         </p>
       </div>
 
-      {/* Oracle-Mark 괴리 */}
+      {/* Oracle-Mark Divergence */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-semibold text-white">🔮 Oracle-Mark Divergence</h3>
           <span className="text-xs text-gray-500">5s refresh</span>
         </div>
         <div className="space-y-3">
-          {divergence.map(m => {
-            const mark = parseFloat(m.mark || '0');
-            const oracle = parseFloat(m.oracle || '0');
-            const div = oracle > 0 ? ((mark - oracle) / oracle * 100) : 0;
-            return (
-              <div key={m.symbol} className="flex items-center justify-between">
+          {divergence.length === 0 ? (
+            <p className="text-gray-600 text-sm text-center py-4">No significant divergence</p>
+          ) : (
+            divergence.slice(0, 5).map(d => (
+              <div key={d.symbol} className="flex justify-between items-center">
+                <span className="text-white text-sm font-medium">{d.symbol}</span>
                 <div className="flex items-center gap-3">
-                  <span className="font-mono font-medium text-white w-16">{m.symbol}</span>
-                  <span className={`font-mono text-xs px-2 py-0.5 rounded ${div > 0 ? 'text-purple-400 bg-purple-400/10' : 'text-orange-400 bg-orange-400/10'}`}>
-                    {div > 0 ? '+' : ''}{div.toFixed(4)}%
+                  <span className="text-gray-400 text-xs">Mark ${parseFloat(d.mark).toFixed(2)}</span>
+                  <span className={`text-xs font-semibold ${d.divergence_pct >= 0 ? 'text-amber-400' : 'text-blue-400'}`}>
+                    {d.divergence_pct >= 0 ? '+' : ''}{d.divergence_pct.toFixed(3)}%
                   </span>
                 </div>
-                <div className="text-right text-xs text-gray-500 font-mono">
-                  {mark.toFixed(4)}
-                </div>
               </div>
-            );
-          })}
-          {divergence.length === 0 && (
-            <p className="text-gray-600 text-sm text-center py-4">No significant divergence</p>
+            ))
           )}
         </div>
         <p className="text-xs text-gray-600 mt-4">

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { LoginModal } from './LoginModal';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://copy-perp.onrender.com';
 
 interface Trader {
   address: string;
@@ -17,7 +17,6 @@ interface Trader {
   score: number;
   pnl_30d: number;
   is_recommended?: boolean;
-  // active: 백엔드에서 int(0/1) 또는 boolean 모두 가능
   active: number | boolean;
 }
 
@@ -67,12 +66,11 @@ function FollowButton({
     }
     setFollowing(true);
     try {
-      // 이미 로그인된 경우 직접 onboard 호출 (follower_address 포함)
       const res = await fetch(`${API_URL}/followers/onboard`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          follower_address: followerAddress,   // 버그 수정: 팔로워 주소 포함
+          follower_address: followerAddress,
           traders: [trader.address],
           copy_ratio: 0.1,
           max_position_usdc: 50,
@@ -86,7 +84,7 @@ function FollowButton({
   };
 
   if (done) return (
-    <span className="text-green-400 text-sm font-medium">✅ 팔로우 중</span>
+    <span className="text-green-400 text-sm font-medium">✅ Following</span>
   );
 
   return (
@@ -98,9 +96,9 @@ function FollowButton({
       {following ? (
         <span className="flex items-center gap-1">
           <span className="animate-spin w-3 h-3 border border-white border-t-transparent rounded-full inline-block" />
-          팔로우 중
+          Following...
         </span>
-      ) : '팔로우'}
+      ) : 'Follow'}
     </button>
   );
 }
@@ -112,7 +110,6 @@ export function Leaderboard() {
   const [loginModal, setLoginModal] = useState(false);
   const [followTarget, setFollowTarget] = useState<string | undefined>();
 
-  // Privy embedded wallet 주소 추출
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const solanaWallet = (user?.linkedAccounts as any[])?.find(
     (a: any) => a.type === 'wallet' && a.chainType === 'solana'
@@ -122,11 +119,11 @@ export function Leaderboard() {
   const fetchTraders = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/traders?limit=20`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      // active는 int(0/1) 또는 boolean 모두 처리
       setTraders((data.data || []).filter((t: Trader) => Boolean(t.active)));
-    } catch {
-      // API 없으면 빈 배열
+    } catch (e) {
+      console.error('Failed to fetch traders:', e);
     } finally {
       setLoading(false);
     }
@@ -152,7 +149,7 @@ export function Leaderboard() {
   if (traders.length === 0) return (
     <div className="text-center py-12 text-gray-500">
       <div className="text-4xl mb-3">📊</div>
-      <p>트레이더 데이터 로딩 중...</p>
+      <p>Loading traders...</p>
     </div>
   );
 
@@ -170,14 +167,14 @@ export function Leaderboard() {
           <thead>
             <tr className="border-b border-gray-800 text-gray-500 text-xs uppercase tracking-wide">
               <th className="text-left py-3 px-4 w-10">#</th>
-              <th className="text-left py-3 px-4">트레이더</th>
+              <th className="text-left py-3 px-4">Trader</th>
               <th className="text-right py-3 px-4">30d ROI</th>
               <th className="text-right py-3 px-4 hidden md:table-cell">7d ROI</th>
-              <th className="text-right py-3 px-4 hidden lg:table-cell">승률</th>
+              <th className="text-right py-3 px-4 hidden lg:table-cell">Win Rate</th>
               <th className="text-right py-3 px-4 hidden lg:table-cell">PF</th>
               <th className="text-right py-3 px-4 hidden xl:table-cell">Score</th>
               <th className="text-right py-3 px-4">30d PnL</th>
-              <th className="text-center py-3 px-4">팔로우</th>
+              <th className="text-center py-3 px-4">Follow</th>
             </tr>
           </thead>
           <tbody>
@@ -195,12 +192,9 @@ export function Leaderboard() {
                   key={trader.address}
                   className={`border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors ${isRecommended ? 'bg-indigo-950/20' : ''}`}
                 >
-                  {/* 순위 */}
                   <td className="py-3 px-4 text-gray-500 text-sm font-mono">
                     {idx < 3 ? ['🥇','🥈','🥉'][idx] : `${idx+1}`}
                   </td>
-
-                  {/* 주소 + 배지 */}
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex-shrink-0 flex items-center justify-center text-xs font-bold text-white">
@@ -219,38 +213,24 @@ export function Leaderboard() {
                       </div>
                     </div>
                   </td>
-
-                  {/* 30d ROI */}
                   <td className={`py-3 px-4 text-right font-mono text-sm font-medium ${roi30 >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {roi30 >= 0 ? '+' : ''}{roi30.toFixed(1)}%
                   </td>
-
-                  {/* 7d ROI */}
                   <td className={`py-3 px-4 text-right font-mono text-sm hidden md:table-cell ${roi7 >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {roi7 >= 0 ? '+' : ''}{roi7.toFixed(1)}%
                   </td>
-
-                  {/* 승률 */}
                   <td className="py-3 px-4 text-right text-sm text-gray-300 hidden lg:table-cell">
                     {wr.toFixed(0)}%
                   </td>
-
-                  {/* Profit Factor */}
                   <td className="py-3 px-4 text-right text-sm text-gray-300 hidden lg:table-cell">
                     {pf > 0 ? `${pf.toFixed(1)}x` : '—'}
                   </td>
-
-                  {/* Score */}
                   <td className="py-3 px-4 text-right text-sm text-indigo-300 hidden xl:table-cell font-mono">
                     {score.toFixed(0)}
                   </td>
-
-                  {/* 30d PnL */}
                   <td className={`py-3 px-4 text-right font-mono text-sm ${pnl30 >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {pnl30 >= 0 ? '+' : ''}${pnl30.toLocaleString(undefined, {maximumFractionDigits: 0})}
                   </td>
-
-                  {/* 팔로우 버튼 */}
                   <td className="py-3 px-4 text-center">
                     <FollowButton
                       trader={trader}
