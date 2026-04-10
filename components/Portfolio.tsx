@@ -1,6 +1,7 @@
 'use client';
 
 import { usePrivy } from '@privy-io/react-auth';
+import { useSolanaWallet } from '@/lib/use-solana-wallet';
 import { useEffect, useState, useCallback } from 'react';
 import { getSolanaAddress, truncateAddress } from '@/lib/privy-helpers';
 
@@ -61,12 +62,13 @@ function fmtPnl(pnl: number): string {
 
 export function Portfolio() {
   const { authenticated, user } = usePrivy();
+  const { address: walletAddress, loading: walletLoading, timedOut: walletTimedOut } = useSolanaWallet();
   const [state, setState] = useState<PortfolioState | null>(null);
   const [loading, setLoading] = useState(false);
   const [unfollowing, setUnfollowing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const walletAddress = getSolanaAddress(user ?? null);
+  
 
   const fetchData = useCallback(async () => {
     if (!authenticated || !walletAddress) return;
