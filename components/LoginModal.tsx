@@ -7,6 +7,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   followAfterLogin?: string;
+  onSuccess?: () => void;
 }
 
 export function LoginModal({ isOpen, onClose, followAfterLogin }: Props) {
@@ -19,12 +20,26 @@ export function LoginModal({ isOpen, onClose, followAfterLogin }: Props) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl p-8 max-w-sm w-full">
+    <div
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-gray-900 border border-gray-700 rounded-2xl p-8 max-w-sm w-full relative">
+        {/* X close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors p-1 rounded-lg hover:bg-gray-800"
+          aria-label="Close"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
         <h2 className="text-xl font-bold text-white mb-2">Connect Wallet</h2>
         <p className="text-gray-400 text-sm mb-6">
           {followAfterLogin
-            ? `Sign in to follow this trader and start copying trades.`
+            ? 'Sign in to follow this trader and start copying trades.'
             : 'Sign in to access Copy Perp and start copy trading.'}
         </p>
 
