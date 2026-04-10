@@ -4,25 +4,24 @@ import { useEffect, useState } from 'react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://copy-perp.onrender.com';
 
-interface FundingSignal {
+interface MarketSignal {
   symbol: string;
   mark: string;
   oracle: string;
   funding: string;
   open_interest: string;
-  volume_24h: string;
+  volume_24h?: string;
+  divergence_pct?: number;  // optional — computed if missing
 }
 
-interface DivergenceSignal {
-  symbol: string;
-  mark: string;
-  oracle: string;
-  divergence_pct: number;
+function safeFloat(v: unknown, fallback = 0): number {
+  const n = typeof v === 'string' ? parseFloat(v) : Number(v);
+  return isFinite(n) ? n : fallback;
 }
 
 export function SignalFeed() {
-  const [funding, setFunding] = useState<FundingSignal[]>([]);
-  const [divergence, setDivergence] = useState<DivergenceSignal[]>([]);
+  const [funding, setFunding] = useState<MarketSignal[]>([]);
+  const [divergence, setDivergence] = useState<MarketSignal[]>([]);
   const [updatedAt, setUpdatedAt] = useState('');
 
   const fetchSignals = () => {
@@ -55,20 +54,21 @@ export function SignalFeed() {
             <p className="text-gray-600 text-sm text-center py-4">Loading...</p>
           ) : (
             funding.slice(0, 5).map(f => {
-              const rate = parseFloat(f.funding);
+              const rate = safeFloat(f.funding);
+              const mark = safeFloat(f.mark);
               const isHigh = rate > 0.01;
               const isLow = rate < -0.01;
               return (
                 <div key={f.symbol} className="flex justify-between items-center">
-                  <span className="text-white text-sm font-medium">{f.symbol}</span>
+                  <span className="text-white text-sm font-medium w-20">{f.symbol}</span>
                   <div className="flex items-center gap-3">
-                    <span className="text-gray-400 text-xs">${(parseFloat(f.mark) || 0).toFixed(4)}</span>
+                    <span className="text-gray-400 text-xs">${mark.toFixed(4)}</span>
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
                       isHigh ? 'bg-red-500/20 text-red-400' :
                       isLow ? 'bg-emerald-500/20 text-emerald-400' :
                       'bg-gray-700 text-gray-400'
                     }`}>
-                      {(rate * 100).toFixed(4)}%
+                      {rate >= 0 ? '+' : ''}{(rate * 100).toFixed(4)}%
                     </span>
                   </div>
                 </div>
@@ -91,17 +91,25 @@ export function SignalFeed() {
           {divergence.length === 0 ? (
             <p className="text-gray-600 text-sm text-center py-4">No significant divergence</p>
           ) : (
-            divergence.slice(0, 5).map(d => (
-              <div key={d.symbol} className="flex justify-between items-center">
-                <span className="text-white text-sm font-medium">{d.symbol}</span>
-                <div className="flex items-center gap-3">
-                  <span className="text-gray-400 text-xs">Mark ${(parseFloat(d.mark) || 0).toFixed(2)}</span>
-                  <span className={`text-xs font-semibold ${(d.divergence_pct ?? 0) >= 0 ? 'text-amber-400' : 'text-blue-400'}`}>
-                    {(d.divergence_pct ?? 0) >= 0 ? '+' : ''}{(d.divergence_pct ?? 0).toFixed(3)}%
-                  </span>
+            divergence.slice(0, 5).map(d => {
+              const mark = safeFloat(d.mark);
+              const oracle = safeFloat(d.oracle);
+              // divergence_pct may be missing — compute from mark/oracle
+              const divPct = d.divergence_pct != null
+                ? safeFloat(d.divergence_pct)
+                : (oracle > 0 ? ((mark - oracle) / oracle * 100) : 0);
+              return (
+                <div key={d.symbol} className="flex justify-between items-center">
+                  <span className="text-white text-sm font-medium w-20">{d.symbol}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-gray-400 text-xs">Mark ${mark.toFixed(4)}</span>
+                    <span className={`text-xs font-semibold ${divPct >= 0 ? 'text-amber-400' : 'text-blue-400'}`}>
+                      {divPct >= 0 ? '+' : ''}{divPct.toFixed(3)}%
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
         <p className="text-xs text-gray-600 mt-4">
