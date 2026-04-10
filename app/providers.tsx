@@ -9,13 +9,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <PrivyProvider
       appId={PRIVY_APP_ID}
       config={{
-        loginMethods: ['google', 'twitter', 'email', 'wallet'],
+        loginMethods: ['google', 'email', 'wallet'],
         appearance: {
           theme: 'dark',
           accentColor: '#6366f1',
-        },
-        embeddedWallets: {
-          solana: { createOnLogin: 'users-without-wallets' },
         },
       }}
     >
