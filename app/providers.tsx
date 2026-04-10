@@ -13,9 +13,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
         appearance: {
           theme: 'dark',
           accentColor: '#6366f1',
+          logo: 'https://copy-perp-frontend.vercel.app/favicon.ico',
         },
         embeddedWallets: {
           solana: { createOnLogin: 'users-without-wallets' },
+        },
+        // Explicitly allow our domains
+        externalWallets: {
+          solana: { connectors: [] },
         },
       }}
     >
