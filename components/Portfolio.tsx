@@ -162,6 +162,27 @@ export function Portfolio() {
 
   return (
     <div className="space-y-6">
+      {/* ── Agent Binding 안내 (팔로우했지만 거래 실패 시) ── */}
+      {following.length > 0 && safeNum(pnlSummary?.total_trades) === 0 && (
+        <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+          <span className="text-2xl">⚠️</span>
+          <div className="flex-1 min-w-0">
+            <div className="text-amber-300 font-medium text-sm mb-1">Agent Binding Required</div>
+            <p className="text-amber-200/70 text-xs leading-relaxed">
+              You&apos;re following traders, but the copy engine needs permission to trade on your behalf.
+              Go to Pacifica Settings → Agents and authorize the agent wallet.
+            </p>
+            <a
+              href="https://testnet.app.pacifica.fi/settings/agents"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 mt-2 text-xs text-amber-300 hover:text-amber-200 underline underline-offset-2"
+            >
+              Open Pacifica Agent Settings ↗
+            </a>
+          </div>
+        </div>
+      )}
       {/* ── Stats 요약 ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
