@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   generateBuildId: async () => {
     return `build-${Date.now()}`;
   },
+  env: {
+    BUILD_TIME: new Date().toISOString(),
+  },
 };
 
 export default nextConfig;

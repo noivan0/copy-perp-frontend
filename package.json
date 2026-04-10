@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "prebuild": "rm -rf .next"
   },
   "dependencies": {
     "@fuul/sdk": "^7.17.1",
