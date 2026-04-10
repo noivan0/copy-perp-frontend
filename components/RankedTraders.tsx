@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { LoginModal } from './LoginModal';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://copy-perp.onrender.com';
 
 interface CRSTrader {
   address: string;
@@ -58,7 +58,7 @@ function CRSBar({ value, label, color }: { value: number; label: string; color: 
           style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
         />
       </div>
-      <span className="text-gray-400 w-8 text-right font-mono">{value.toFixed(0)}</span>
+      <span className="text-gray-400 w-8 text-right font-mono">{(value ?? 0).toFixed(0)}</span>
     </div>
   );
 }
@@ -104,7 +104,7 @@ function TraderCard({ trader, rank, onFollow }: {
 
         <div className="flex items-center gap-3 shrink-0">
           <div className="text-right">
-            <div className="text-2xl font-bold text-white">{trader.crs.toFixed(0)}</div>
+            <div className="text-2xl font-bold text-white">{(trader.crs ?? 0).toFixed(0)}</div>
             <div className="text-xs text-gray-500">CRS</div>
           </div>
           {!trader.disqualified && (

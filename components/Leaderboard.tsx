@@ -159,7 +159,6 @@ export function Leaderboard() {
         isOpen={loginModal}
         onClose={() => { setLoginModal(false); setFollowTarget(undefined); }}
         followAfterLogin={followTarget}
-        onSuccess={() => setLoginModal(false)}
       />
 
       <div className="overflow-x-auto">

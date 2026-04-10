@@ -62,7 +62,7 @@ export function SignalFeed() {
                 <div key={f.symbol} className="flex justify-between items-center">
                   <span className="text-white text-sm font-medium">{f.symbol}</span>
                   <div className="flex items-center gap-3">
-                    <span className="text-gray-400 text-xs">${parseFloat(f.mark).toFixed(4)}</span>
+                    <span className="text-gray-400 text-xs">${(parseFloat(f.mark) || 0).toFixed(4)}</span>
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
                       isHigh ? 'bg-red-500/20 text-red-400' :
                       isLow ? 'bg-emerald-500/20 text-emerald-400' :
@@ -95,9 +95,9 @@ export function SignalFeed() {
               <div key={d.symbol} className="flex justify-between items-center">
                 <span className="text-white text-sm font-medium">{d.symbol}</span>
                 <div className="flex items-center gap-3">
-                  <span className="text-gray-400 text-xs">Mark ${parseFloat(d.mark).toFixed(2)}</span>
-                  <span className={`text-xs font-semibold ${d.divergence_pct >= 0 ? 'text-amber-400' : 'text-blue-400'}`}>
-                    {d.divergence_pct >= 0 ? '+' : ''}{d.divergence_pct.toFixed(3)}%
+                  <span className="text-gray-400 text-xs">Mark ${(parseFloat(d.mark) || 0).toFixed(2)}</span>
+                  <span className={`text-xs font-semibold ${(d.divergence_pct ?? 0) >= 0 ? 'text-amber-400' : 'text-blue-400'}`}>
+                    {(d.divergence_pct ?? 0) >= 0 ? '+' : ''}{(d.divergence_pct ?? 0).toFixed(3)}%
                   </span>
                 </div>
               </div>
