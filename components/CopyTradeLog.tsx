@@ -1,5 +1,5 @@
+/* v3 — safeNum guard on all toFixed calls */
 'use client';
-// v3 — safeNum guard on all toFixed calls
 
 import { useEffect, useState } from 'react';
 
@@ -61,7 +61,7 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
     </div>
   );
 
-  const pnl = safeNum(summary?.realized_pnl_usdc ?? summary?.total_pnl_usdc);
+  const totalPnl = safeNum(summary?.realized_pnl_usdc ?? summary?.total_pnl_usdc);
 
   return (
     <div className="space-y-4">
@@ -69,7 +69,7 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-gray-800/50 rounded-lg p-3 text-center">
             <div className="text-xs text-gray-400">Filled Orders</div>
-            <div className="text-xl font-bold text-white">{summary.filled ?? 0}</div>
+            <div className="text-xl font-bold text-white">{safeNum(summary.filled)}</div>
           </div>
           <div className="bg-gray-800/50 rounded-lg p-3 text-center">
             <div className="text-xs text-gray-400">Total Volume</div>
@@ -79,8 +79,8 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
           </div>
           <div className="bg-gray-800/50 rounded-lg p-3 text-center">
             <div className="text-xs text-gray-400">Total PnL</div>
-            <div className={`text-xl font-bold ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)} USDC
+            <div className={`text-xl font-bold ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {totalPnl >= 0 ? '+' : ''}{totalPnl.toFixed(2)} USDC
             </div>
           </div>
         </div>
@@ -110,14 +110,14 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
                 return (
                   <tr key={t.id} className="border-b border-gray-800/30 hover:bg-gray-800/20">
                     <td className="py-2 px-3 text-gray-500">
-                      {new Date(t.created_at * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(safeNum(t.created_at) * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                     </td>
                     <td className="py-2 px-3 font-medium">{t.symbol}</td>
                     <td className={`py-2 px-3 font-medium ${t.side === 'bid' ? 'text-green-400' : 'text-red-400'}`}>
                       {t.side === 'bid' ? '▲ LONG' : '▼ SHORT'}
                     </td>
                     <td className="py-2 px-3 text-right font-mono">{t.amount}</td>
-                    <td className="py-2 px-3 text-right font-mono">${safeNum(parseFloat(t.price)).toLocaleString()}</td>
+                    <td className="py-2 px-3 text-right font-mono">${safeNum(parseFloat(t.price || '0')).toLocaleString()}</td>
                     <td className="py-2 px-3 text-center">
                       <span className={`px-1.5 py-0.5 rounded text-xs ${
                         t.status === 'filled' ? 'bg-green-500/20 text-green-400' :
