@@ -24,6 +24,8 @@ export function SignalFeed() {
   const [funding, setFunding] = useState<MarketSignal[]>([]);
   const [divergence, setDivergence] = useState<MarketSignal[]>([]);
   const [updatedAt, setUpdatedAt] = useState('');
+  const [hasError, setHasError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchSignals = () => {
     fetch(`${API_URL}/signals?top_n=5`)
@@ -32,8 +34,13 @@ export function SignalFeed() {
         setFunding(d.funding_extremes || []);
         setDivergence(d.oracle_mark_divergence || []);
         setUpdatedAt(new Date().toLocaleTimeString());
+        setHasError(false);
+        setIsLoading(false);
       })
-      .catch(() => {});
+      .catch(() => {
+        setHasError(true);
+        setIsLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -51,8 +58,12 @@ export function SignalFeed() {
           <span className="text-xs text-gray-500">{updatedAt || '—'}</span>
         </div>
         <div className="space-y-3">
-          {funding.length === 0 ? (
+          {isLoading ? (
             <p className="text-gray-600 text-sm text-center py-4">Loading...</p>
+          ) : hasError ? (
+            <p className="text-red-400 text-sm text-center py-4">⚠️ Signal data unavailable — retrying…</p>
+          ) : funding.length === 0 ? (
+            <p className="text-gray-600 text-sm text-center py-4">No funding extremes</p>
           ) : (
             funding.slice(0, 5).map(f => {
               const rate = safeFloat(f.funding);
@@ -89,7 +100,11 @@ export function SignalFeed() {
           <span className="text-xs text-gray-500">5s refresh</span>
         </div>
         <div className="space-y-3">
-          {divergence.length === 0 ? (
+          {isLoading ? (
+            <p className="text-gray-600 text-sm text-center py-4">Loading...</p>
+          ) : hasError ? (
+            <p className="text-red-400 text-sm text-center py-4">⚠️ Data unavailable</p>
+          ) : divergence.length === 0 ? (
             <p className="text-gray-600 text-sm text-center py-4">No significant divergence</p>
           ) : (
             divergence.slice(0, 5).map(d => {

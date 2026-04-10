@@ -1,8 +1,9 @@
-/* v3 */
+/* v4 */
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
+import { useSolanaWallet } from '@/lib/use-solana-wallet';
 
 function safeNum(v: unknown, fb = 0): number { const n = Number(v); return isFinite(n) ? n : fb; }
 
