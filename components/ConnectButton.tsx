@@ -1,13 +1,10 @@
 'use client';
 
 import { usePrivy } from '@privy-io/react-auth';
-import { useState } from 'react';
-import { LoginModal } from './LoginModal';
 import { getSolanaAddress } from '@/lib/privy-helpers';
 
 export function ConnectButton() {
-  const { ready, authenticated, logout, user } = usePrivy();
-  const [showModal, setShowModal] = useState(false);
+  const { ready, authenticated, logout, login, user } = usePrivy();
   const address = getSolanaAddress(user ?? null);
 
   if (!ready) {
@@ -20,18 +17,15 @@ export function ConnectButton() {
 
   if (!authenticated) {
     return (
-      <>
-        <LoginModal isOpen={showModal} onClose={() => setShowModal(false)} />
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24">
-            <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
-          </svg>
-          Connect Wallet
-        </button>
-      </>
+      <button
+        onClick={login}
+        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+      >
+        <svg className="w-4 h-4" viewBox="0 0 24 24">
+          <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+        </svg>
+        Connect Wallet
+      </button>
     );
   }
 

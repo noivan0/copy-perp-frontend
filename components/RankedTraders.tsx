@@ -3,7 +3,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
-import { LoginModal } from './LoginModal';
 
 function safeNum(v: unknown, fb = 0): number { const n = Number(v); return isFinite(n) ? n : fb; }
 
@@ -72,7 +71,7 @@ function TraderCard({ trader, rank, onFollow }: {
   onFollow: (addr: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const { authenticated } = usePrivy();
+  const { authenticated, login } = usePrivy();
 
   const gradeStyle = GRADE_COLORS[trader.grade] || GRADE_COLORS['D'];
   const ringStyle = GRADE_RING[trader.grade] || '';
@@ -210,8 +209,7 @@ export function RankedTraders() {
   const [loading, setLoading] = useState(true);
   const [gradeFilter, setGradeFilter] = useState('C');
   const [showDisqualified, setShowDisqualified] = useState(false);
-  const [loginModal, setLoginModal] = useState(false);
-  const [followTarget, setFollowTarget] = useState<string | undefined>();
+  const { login } = usePrivy();
 
   const fetchRanked = useCallback(async () => {
     try {
@@ -255,18 +253,12 @@ export function RankedTraders() {
     return () => clearInterval(t);
   }, [fetchRanked]);
 
-  const handleFollow = (addr: string) => {
-    setFollowTarget(addr);
-    setLoginModal(true);
+  const handleFollow = (_addr: string) => {
+    login();
   };
 
   return (
     <>
-      <LoginModal
-        isOpen={loginModal}
-        onClose={() => { setLoginModal(false); setFollowTarget(undefined); }}
-        followAfterLogin={followTarget}
-      />
 
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div className="flex items-center gap-2">
