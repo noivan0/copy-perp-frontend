@@ -4,7 +4,19 @@ import { Providers } from './providers';
 
 export const metadata: Metadata = {
   title: 'Copy Perp — Decentralized Copy Trading on Pacifica',
-  description: 'Follow top traders and automatically copy their positions on Pacifica DEX',
+  description: 'Automatically copy top traders on Pacifica DEX. Non-custodial, algorithm-selected, Builder Code revenue.',
+  openGraph: {
+    title: 'Copy Perp',
+    description: 'Copy top traders on Pacifica DEX — non-custodial, on-chain',
+    url: 'https://copy-perp-frontend.vercel.app',
+    siteName: 'Copy Perp',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Copy Perp — Decentralized Copy Trading on Pacifica',
+    description: 'Copy top traders on Pacifica DEX — non-custodial, on-chain',
+  },
 };
 
 export default function RootLayout({
