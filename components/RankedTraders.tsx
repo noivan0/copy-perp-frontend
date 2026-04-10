@@ -77,12 +77,16 @@ function CRSBar({ value, label, color }: { value: number; label: string; color: 
 function FollowButton({
   traderAddr,
   authenticated,
-  followerAddress,
+  walletAddress,
+  walletLoading,
+  walletTimedOut,
   onLoginNeeded,
 }: {
   traderAddr: string;
   authenticated: boolean;
-  followerAddress?: string;
+  walletAddress?: string;
+  walletLoading: boolean;
+  walletTimedOut: boolean;
   onLoginNeeded: () => void;
 }) {
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
@@ -90,19 +94,26 @@ function FollowButton({
 
   const handleClick = async () => {
     if (!authenticated) { onLoginNeeded(); return; }
-    if (!followerAddress) {
-      setMsg('Wallet not ready — please wait');
+    if (walletLoading) {
+      setMsg('Wallet loading… please wait');
       setState('error');
       setTimeout(() => setState('idle'), 3000);
       return;
     }
+    if (walletTimedOut || !walletAddress) {
+      setMsg('No Solana wallet found. Please reconnect.');
+      setState('error');
+      setTimeout(() => setState('idle'), 5000);
+      return;
+    }
     setState('loading');
+    setMsg('');
     try {
       const res = await fetch(`${API_URL}/followers/onboard`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          follower_address: followerAddress,
+          follower_address: walletAddress,
           traders: [traderAddr],
           copy_ratio: 0.07,
           max_position_usdc: 50,
@@ -113,19 +124,38 @@ function FollowButton({
       if (data.ok) {
         setState('done');
       } else {
-        setMsg(data.detail || 'Failed');
+        const errDetail = typeof data.detail === 'string'
+          ? data.detail
+          : data.detail?.error || data.error || 'Follow failed';
+        setMsg(errDetail);
         setState('error');
-        setTimeout(() => setState('idle'), 3000);
+        setTimeout(() => setState('idle'), 4000);
       }
     } catch {
-      setMsg('Network error');
+      setMsg('Network error — try again');
       setState('error');
-      setTimeout(() => setState('idle'), 3000);
+      setTimeout(() => setState('idle'), 4000);
     }
   };
 
   if (state === 'done') return (
     <span className="text-green-400 text-sm font-medium px-2">✅ Following</span>
+  );
+
+  if (!authenticated) return (
+    <button
+      onClick={onLoginNeeded}
+      className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2.5 rounded-lg text-sm font-medium transition-colors min-h-[44px]"
+    >
+      Sign in to Follow
+    </button>
+  );
+
+  if (walletLoading) return (
+    <button disabled className="bg-gray-700 text-gray-400 px-3 py-2.5 rounded-lg text-sm min-h-[44px] flex items-center gap-1.5">
+      <span className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin inline-block" />
+      Wallet…
+    </button>
   );
 
   return (
@@ -137,22 +167,22 @@ function FollowButton({
       >
         {state === 'loading' ? (
           <><span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin inline-block" /> Following...</>
-        ) : (
-          authenticated ? 'Follow' : 'Sign in to Follow'
-        )}
+        ) : 'Follow'}
       </button>
       {state === 'error' && msg && (
-        <span className="text-xs text-red-400">{msg}</span>
+        <span className="text-xs text-red-400 text-right max-w-[140px]">{msg}</span>
       )}
     </div>
   );
 }
 
-function TraderCard({ trader, rank, authenticated, followerAddress, onLoginNeeded }: {
+function TraderCard({ trader, rank, authenticated, walletAddress, walletLoading, walletTimedOut, onLoginNeeded }: {
   trader: CRSTrader;
   rank: number;
   authenticated: boolean;
-  followerAddress?: string;
+  walletAddress?: string;
+  walletLoading: boolean;
+  walletTimedOut: boolean;
   onLoginNeeded: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -200,7 +230,9 @@ function TraderCard({ trader, rank, authenticated, followerAddress, onLoginNeede
             <FollowButton
               traderAddr={trader.address}
               authenticated={authenticated}
-              followerAddress={followerAddress}
+              walletAddress={walletAddress}
+              walletLoading={walletLoading}
+              walletTimedOut={walletTimedOut}
               onLoginNeeded={onLoginNeeded}
             />
           )}
@@ -300,13 +332,8 @@ export function RankedTraders() {
   const [availableGrades, setAvailableGrades] = useState<Set<string>>(new Set());
   const [gradeCounts, setGradeCounts] = useState<Record<string, number>>({});
 
-  const { authenticated, user, login } = usePrivy();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const solanaWallet = (user?.linkedAccounts as any[])?.find(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (a: any) => a.type === 'wallet' && a.chainType === 'solana'
-  );
-  const followerAddress: string | undefined = solanaWallet?.address;
+  const { authenticated, login } = usePrivy();
+  const { address: walletAddress, loading: walletLoading, timedOut: walletTimedOut } = useSolanaWallet();
 
   const fetchRanked = useCallback(async () => {
     try {
@@ -433,7 +460,9 @@ export function RankedTraders() {
               trader={t}
               rank={i + 1}
               authenticated={authenticated}
-              followerAddress={followerAddress}
+              walletAddress={walletAddress}
+              walletLoading={walletLoading}
+              walletTimedOut={walletTimedOut}
               onLoginNeeded={login}
             />
           ))}

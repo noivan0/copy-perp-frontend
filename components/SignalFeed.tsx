@@ -97,7 +97,7 @@ export function SignalFeed() {
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-semibold text-white">🔮 Oracle-Mark Divergence</h3>
-          <span className="text-xs text-gray-500">5s refresh</span>
+          
         </div>
         <div className="space-y-3">
           {isLoading ? (
