@@ -2,14 +2,9 @@
 
 import { PrivyProvider } from '@privy-io/react-auth';
 
-const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
+const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || 'cmmvoxcix058e0ckv7uhp9ip0';
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  // Privy App ID 없으면 그냥 children 렌더 (빌드/개발 환경)
-  if (!PRIVY_APP_ID || PRIVY_APP_ID === 'placeholder-replace-with-real-app-id') {
-    return <>{children}</>;
-  }
-
   return (
     <PrivyProvider
       appId={PRIVY_APP_ID}
