@@ -24,3 +24,23 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ── Privy Modal — Center & Scrollable ── */
+/* Force modal to viewport center, not top */
+[data-privy-dialog],
+[role="dialog"][data-state="open"],
+.privy-dialog-backdrop {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Ensure modal content is within viewport */
+[data-privy-dialog] > div,
+[role="dialog"] > div:first-child {
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  margin: auto !important;
+  top: auto !important;
+  transform: none !important;
+}
