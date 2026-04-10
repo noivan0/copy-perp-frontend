@@ -10,15 +10,15 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-950">
       {/* Header */}
-      <header className="border-b border-gray-800 sticky top-0 bg-gray-950/90 backdrop-blur z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+      <header className="border-b border-gray-800 sticky top-0 bg-gray-950/95 backdrop-blur z-40">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0">
               CP
             </div>
             <div>
               <span className="font-bold text-white">Copy Perp</span>
-              <span className="text-gray-500 text-xs ml-2">on Pacifica</span>
+              <span className="text-gray-500 text-xs ml-2 hidden sm:inline">on Pacifica</span>
             </div>
           </div>
           <ConnectButton />
@@ -33,31 +33,58 @@ export default function Home() {
         <ReferralBanner />
 
         {/* Hero */}
-        <section className="text-center py-8">
-          <h1 className="text-4xl font-bold text-white mb-3">
-            Copy Top Traders on{' '}
-            <span className="text-indigo-400">Pacifica DEX</span>
+        <section className="text-center py-6 md:py-10">
+          <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs px-3 py-1.5 rounded-full mb-4">
+            <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse" />
+            Live on Pacifica Testnet
+          </div>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">
+            Copy Top Traders<br />
+            <span className="text-indigo-400">on Pacifica DEX</span>
           </h1>
-          <p className="text-gray-400 text-lg max-w-xl mx-auto">
-            Follow the best traders and automatically mirror their positions.
+          <p className="text-gray-400 text-base md:text-lg max-w-xl mx-auto mb-6">
+            Follow the best performers and automatically mirror their positions.
             Fully on-chain, non-custodial, powered by Builder Code.
           </p>
-          <div className="flex items-center justify-center gap-6 mt-6 text-sm text-gray-500">
-            <span>🔐 Non-custodial</span>
-            <span>⚡ &lt;600ms latency</span>
-            <span>💰 0.1% builder fee</span>
-            <span>🎁 Fuul rewards</span>
+          <div className="flex items-center justify-center flex-wrap gap-4 md:gap-6 text-sm text-gray-500">
+            <span className="flex items-center gap-1.5">🔐 Non-custodial</span>
+            <span className="flex items-center gap-1.5">⚡ &lt;600ms latency</span>
+            <span className="flex items-center gap-1.5">💰 0.1% builder fee</span>
+            <span className="flex items-center gap-1.5">🎁 Fuul rewards</span>
+          </div>
+        </section>
+
+        {/* How It Works — 상단 배치로 흐름 이해 먼저 */}
+        <section>
+          <h2 className="text-lg font-semibold text-white mb-4 text-center">How It Works</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { num: '01', icon: '🔑', title: 'Connect', desc: 'Sign in with Google. Solana wallet auto-created.' },
+              { num: '02', icon: '🎯', title: 'Choose', desc: 'Browse CRS-ranked traders by reliability score.' },
+              { num: '03', icon: '⚡', title: 'Copy', desc: 'Set ratio & max size. Trades mirror in <600ms.' },
+              { num: '04', icon: '💰', title: 'Earn', desc: 'Earn Fuul points. Builder Code noivan captures fees.' },
+            ].map(({ num, icon, title, desc }) => (
+              <div key={num} className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
+                <div className="text-2xl mb-2">{icon}</div>
+                <div className="text-xs text-indigo-400 font-mono mb-1">STEP {num}</div>
+                <h3 className="font-semibold text-white text-sm mb-1">{title}</h3>
+                <p className="text-gray-500 text-xs leading-relaxed">{desc}</p>
+              </div>
+            ))}
           </div>
         </section>
 
         {/* Live Market Signals */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-white">Live Market Signals</h2>
+            <div>
+              <h2 className="text-xl font-semibold text-white">Live Market Signals</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Funding rate extremes &amp; oracle divergence</p>
+            </div>
             <span className="flex items-center gap-1.5 text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 rounded-full font-medium">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
               </span>
               LIVE · 5s
             </span>
@@ -74,19 +101,44 @@ export default function Home() {
                 Composite Reliability Score — 5-dimensional ranking before you copy
               </p>
             </div>
-            <span className="text-xs text-green-500 bg-green-500/10 px-2 py-1 rounded">● Live</span>
+            <span className="flex items-center gap-1.5 text-xs text-green-400 bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-full font-medium">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+              </span>
+              LIVE · 60s
+            </span>
           </div>
           <RankedTraders />
+        </section>
+
+        {/* My Portfolio — CRS 바로 뒤 (팔로우 후 즉시 확인) */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-semibold text-white">My Portfolio</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Your PnL, followed traders &amp; recent copy trades</p>
+            </div>
+            <span className="text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full">
+              ● 30s
+            </span>
+          </div>
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <Portfolio />
+          </div>
         </section>
 
         {/* Full Leaderboard */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-white">Full Leaderboard</h2>
+            <div>
+              <h2 className="text-xl font-semibold text-white">Full Leaderboard</h2>
+              <p className="text-xs text-gray-500 mt-0.5">All active traders sorted by 30d PnL</p>
+            </div>
             <span className="flex items-center gap-1.5 text-xs text-green-400 bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-full font-medium">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
               </span>
               LIVE · 30s
             </span>
@@ -96,53 +148,29 @@ export default function Home() {
           </div>
         </section>
 
-        {/* My Portfolio */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-xl font-semibold text-white">My Portfolio</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Your copy trade PnL, followed traders &amp; recent activity</p>
-            </div>
-          </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-            <Portfolio />
-          </div>
-        </section>
-
         {/* Live Copy Trade Log */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-white">Live Copy Trade Log</h2>
-            <span className="text-xs text-green-500 bg-green-500/10 px-2 py-1 rounded">● Live · 30s</span>
+            <div>
+              <h2 className="text-xl font-semibold text-white">Live Copy Trade Log</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Real-time copy execution history</p>
+            </div>
+            <span className="flex items-center gap-1.5 text-xs text-green-400 bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-full font-medium">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+              </span>
+              LIVE · 30s
+            </span>
           </div>
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
             <CopyTradeLog />
           </div>
         </section>
-
-        {/* How It Works */}
-        <section className="border-t border-gray-800 pt-10">
-          <h2 className="text-xl font-semibold text-white mb-6 text-center">How It Works</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {[
-              { num: '01', icon: '🔑', title: 'Connect', desc: 'Sign in with Google via Privy. Solana wallet auto-created in 30 seconds.' },
-              { num: '02', icon: '🎯', title: 'Choose', desc: 'Browse CRS-ranked traders by ROI, win rate, and max drawdown.' },
-              { num: '03', icon: '⚡', title: 'Copy', desc: 'Set your copy ratio and max size. Copy Engine replicates trades in <600ms.' },
-              { num: '04', icon: '💰', title: 'Earn', desc: 'Followers earn Fuul points. Builder Code noivan captures fees on-chain.' },
-            ].map(({ num, icon, title, desc }) => (
-              <div key={num} className="bg-gray-900 border border-gray-800 rounded-xl p-5 text-center">
-                <div className="text-3xl mb-3">{icon}</div>
-                <div className="text-xs text-indigo-400 font-mono mb-1">STEP {num}</div>
-                <h3 className="font-semibold text-white mb-2">{title}</h3>
-                <p className="text-gray-400 text-sm">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
       </div>
 
       <footer className="border-t border-gray-800 mt-16 py-8 text-center text-gray-600 text-sm">
-        <p>Copy Perp — Made by noivan</p>
+        <p>Copy Perp — Made by noivan · Pacifica Hackathon 2026</p>
       </footer>
     </main>
   );
