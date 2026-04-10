@@ -94,7 +94,7 @@ function FollowButton({
     <button
       onClick={handleClick}
       disabled={following}
-      className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+      className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 text-white px-3 py-2.5 rounded-lg text-sm font-medium transition-colors min-h-[44px]"
     >
       {following ? (
         <span className="flex items-center gap-1">

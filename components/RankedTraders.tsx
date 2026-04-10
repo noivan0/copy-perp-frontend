@@ -132,7 +132,7 @@ function FollowButton({
       <button
         onClick={handleClick}
         disabled={state === 'loading'}
-        className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1.5"
+        className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 text-white px-3 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1.5 min-h-[44px]"
       >
         {state === 'loading' ? (
           <><span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin inline-block" /> Following...</>
@@ -253,7 +253,7 @@ function TraderCard({ trader, rank, authenticated, followerAddress, onLoginNeede
 
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full py-2 text-xs text-gray-600 hover:text-gray-400 border-t border-gray-800/50 transition-colors flex items-center justify-center gap-1"
+        className="w-full py-3 text-xs text-gray-600 hover:text-gray-400 border-t border-gray-800/50 transition-colors flex items-center justify-center gap-1 min-h-[44px]"
       >
         {expanded ? 'Collapse ▲' : 'Full Analysis ▼'}
       </button>
@@ -297,6 +297,7 @@ export function RankedTraders() {
   const [gradeFilter, setGradeFilter] = useState('B');
   const [showDisqualified, setShowDisqualified] = useState(false);
   const [availableGrades, setAvailableGrades] = useState<Set<string>>(new Set());
+  const [gradeCounts, setGradeCounts] = useState<Record<string, number>>({});
 
   const { authenticated, user, login } = usePrivy();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -327,9 +328,14 @@ export function RankedTraders() {
 
       setAllTraders(merged);
 
-      // 실제 존재하는 등급 계산
+      // 실제 존재하는 등급 계산 + 등급별 카운트
       const grades = new Set(merged.map(t => t.grade));
+      const counts: Record<string, number> = {};
+      for (const t of merged) {
+        if (!t.disqualified) counts[t.grade] = (counts[t.grade] || 0) + 1;
+      }
       setAvailableGrades(grades);
+      setGradeCounts(counts);
 
       // 필터 적용: gradeFilter 이상의 CRS 등급만
       const GRADE_ORDER = ['S','A','B','C','D'];
@@ -350,6 +356,14 @@ export function RankedTraders() {
     return () => clearInterval(t);
   }, [fetchRanked]);
 
+  // 데이터 로드 후 기본값을 가장 높은 등급으로 자동 설정
+  useEffect(() => {
+    if (allTraders.length === 0) return;
+    const GRADE_ORDER = ['S','A','B','C','D'];
+    const bestGrade = GRADE_ORDER.find(g => allTraders.some(t => t.grade === g && !t.disqualified));
+    if (bestGrade) setGradeFilter(bestGrade);
+  }, [allTraders]);
+
   // 필터 변경 시 allTraders에서 재필터링
   useEffect(() => {
     if (allTraders.length === 0) return;
@@ -365,22 +379,22 @@ export function RankedTraders() {
         <div className="flex items-center gap-2">
           {(['S','A','B','C']).map(g => {
             const hasTraders = availableGrades.has(g);
+            const count = gradeCounts[g] ?? 0;
             return (
               <button
                 key={g}
                 onClick={() => setGradeFilter(g)}
-                disabled={!hasTraders && g !== 'B' && g !== 'C'}
+                disabled={!hasTraders}
                 title={GRADE_DESC[g]}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
                   gradeFilter === g
                     ? GRADE_COLORS[g]
                     : hasTraders
                       ? 'border-gray-700 text-gray-400 hover:text-gray-200'
-                      : 'border-gray-800 text-gray-700 cursor-not-allowed'
+                      : 'border-gray-800 text-gray-700 cursor-not-allowed opacity-50'
                 }`}
               >
-                {g}+
-                {!hasTraders && <span className="ml-1 text-xs opacity-50">0</span>}
+                {g} {count > 0 ? `(${count})` : '(0)'}
               </button>
             );
           })}
@@ -403,8 +417,12 @@ export function RankedTraders() {
       ) : traders.length === 0 ? (
         <div className="text-center py-16 text-gray-500">
           <div className="text-4xl mb-3">🔍</div>
-          <p className="mb-1">No traders found for grade <strong>{gradeFilter}+</strong></p>
-          <p className="text-xs text-gray-600">Try selecting B+ or C+ to see available traders</p>
+          <p className="mb-1">No {gradeFilter}-grade traders on testnet yet.</p>
+          <p className="text-xs text-gray-600 mt-1">
+            {gradeFilter === 'S' || gradeFilter === 'A'
+              ? 'Try B or C to see available traders.'
+              : 'Check back soon as more traders are evaluated.'}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
