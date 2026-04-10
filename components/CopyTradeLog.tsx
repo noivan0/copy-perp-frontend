@@ -1,4 +1,4 @@
-/* v4 — error_msg 표시, ms timestamp 처리, Agent Binding 안내, 포트폴리오 연동 */
+/* v5 — error_msg 표시, ms timestamp 처리, 포트폴리오 연동 */
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -132,7 +132,6 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
               {trades.map(t => {
                 const pnlVal = safeNum(t.realized_pnl ?? t.pnl);
                 const hasPnl = (t.realized_pnl ?? t.pnl) != null;
-                const isUnauth = t.error_msg?.includes('unauthorized to sign');
                 return (
                   <tr key={t.id} className="hover:bg-gray-800/20 transition-colors group">
                     <td className="py-2 px-3 text-gray-500 whitespace-nowrap">
@@ -160,7 +159,7 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
                         'bg-yellow-500/20 text-yellow-400'
                       }`} title={t.error_msg || ''}>
                         {t.status === 'filled' ? '✓ Filled' :
-                         t.status === 'failed' ? (isUnauth ? '🔑 Auth' : '✗ Failed') :
+                         t.status === 'failed' ? '✗ Failed' :
                          '⏳ Pending'}
                       </span>
                     </td>
@@ -179,7 +178,7 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
       )}
 
       <p className="text-xs text-gray-600 text-center">
-        Auto-refresh every 15s · 🔑 Auth = Agent wallet not bound to this address
+        Auto-refresh every 15s
       </p>
     </div>
   );
