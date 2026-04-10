@@ -2,6 +2,7 @@ import { ConnectButton } from '@/components/ConnectButton';
 import { Leaderboard } from '@/components/Leaderboard';
 import { SignalFeed } from '@/components/SignalFeed';
 import { CopyTradeLog } from '@/components/CopyTradeLog';
+import { Portfolio } from '@/components/Portfolio';
 import { ReferralBanner, RefCodeNotice } from '@/components/ReferralBanner';
 import { RankedTraders } from '@/components/RankedTraders';
 
@@ -92,6 +93,19 @@ export default function Home() {
           </div>
           <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
             <Leaderboard />
+          </div>
+        </section>
+
+        {/* My Portfolio */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-semibold text-white">My Portfolio</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Your copy trade PnL, followed traders &amp; recent activity</p>
+            </div>
+          </div>
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <Portfolio />
           </div>
         </section>
 
