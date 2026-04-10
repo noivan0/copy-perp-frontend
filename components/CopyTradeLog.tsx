@@ -116,7 +116,7 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
                     {t.side === 'bid' ? '▲ LONG' : '▼ SHORT'}
                   </td>
                   <td className="py-2 px-3 text-right font-mono">{t.amount}</td>
-                  <td className="py-2 px-3 text-right font-mono">${parseFloat(t.price).toLocaleString()}</td>
+                  <td className="py-2 px-3 text-right font-mono">${(parseFloat(t.price) || 0).toLocaleString()}</td>
                   <td className="py-2 px-3 text-center">
                     <span className={`px-1.5 py-0.5 rounded text-xs ${
                       t.status === 'filled' ? 'bg-green-500/20 text-green-400' :

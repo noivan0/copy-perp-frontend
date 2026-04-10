@@ -63,7 +63,7 @@ export function ReferralBanner() {
       </div>
 
       <div className="flex items-center gap-3 flex-shrink-0">
-        {points !== null && (
+        {points != null && typeof points === 'number' && (
           <div className="text-right">
             <div className="text-xs text-gray-400">Fuul Points</div>
             <div className="text-sm font-bold text-yellow-400">{points.toFixed(1)} pts</div>
