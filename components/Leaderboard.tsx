@@ -3,6 +3,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
+import { getSolanaAddress } from '@/lib/privy-helpers';
 
 function safeNum(v: unknown, fb = 0): number { const n = Number(v); return isFinite(n) ? n : fb; }
 
@@ -110,11 +111,7 @@ export function Leaderboard() {
   const [traders, setTraders] = useState<Trader[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const solanaWallet = (user?.linkedAccounts as any[])?.find(
-    (a: any) => a.type === 'wallet' && a.chainType === 'solana'
-  );
-  const followerAddress: string | undefined = solanaWallet?.address;
+  const followerAddress: string | undefined = getSolanaAddress(user ?? null);
 
   const fetchTraders = useCallback(async () => {
     try {

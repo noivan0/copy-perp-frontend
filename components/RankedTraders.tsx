@@ -207,15 +207,15 @@ function TraderCard({ trader, rank, onFollow }: {
 export function RankedTraders() {
   const [traders, setTraders] = useState<CRSTrader[]>([]);
   const [loading, setLoading] = useState(true);
-  const [gradeFilter, setGradeFilter] = useState('C');
+  const [gradeFilter, setGradeFilter] = useState('B');
   const [showDisqualified, setShowDisqualified] = useState(false);
-  const { login } = usePrivy();
+
 
   const fetchRanked = useCallback(async () => {
     try {
       // Fetch both ranked (CRS) and full traders list (has real roi_30d) in parallel
       const [rankedRes, tradersRes] = await Promise.all([
-        fetch(`${API_URL}/traders/ranked?limit=30&min_grade=${gradeFilter}&exclude_disqualified=${!showDisqualified}`),
+        fetch(`${API_URL}/traders/ranked?limit=50&exclude_disqualified=${!showDisqualified}`),
         fetch(`${API_URL}/traders?limit=200`),
       ]);
       const rankedData = await rankedRes.json();
@@ -253,8 +253,34 @@ export function RankedTraders() {
     return () => clearInterval(t);
   }, [fetchRanked]);
 
-  const handleFollow = (_addr: string) => {
-    login();
+  const { authenticated, user, login } = usePrivy();
+  const solanaWallet = (user?.linkedAccounts as any[])?.find(
+    (a: any) => a.type === 'wallet' && a.chainType === 'solana'
+  );
+  const followerAddress: string | undefined = solanaWallet?.address;
+
+  const handleFollow = async (addr: string) => {
+    if (!authenticated) {
+      login();
+      return;
+    }
+    if (!followerAddress) return;
+    try {
+      const res = await fetch(`${API_URL}/followers/onboard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          follower_address: followerAddress,
+          traders: [addr],
+          copy_ratio: 0.1,
+          max_position_usdc: 50,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) alert(`✅ Now following ${addr.slice(0,8)}...`);
+    } catch (e) {
+      console.error('Follow failed:', e);
+    }
   };
 
   return (

@@ -14,6 +14,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
           theme: 'dark',
           accentColor: '#6366f1',
         },
+        embeddedWallets: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          solana: { createOnLogin: 'users-without-wallets' } as any,
+        },
       }}
     >
       {children}

@@ -64,7 +64,7 @@ export default function Home() {
                 Composite Reliability Score — 5-dimensional ranking before you copy
               </p>
             </div>
-            <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">AI Analysis</span>
+            <span className="text-xs text-green-500 bg-green-500/10 px-2 py-1 rounded">● Live</span>
           </div>
           <RankedTraders />
         </section>
@@ -113,8 +113,7 @@ export default function Home() {
       </div>
 
       <footer className="border-t border-gray-800 mt-16 py-8 text-center text-gray-600 text-sm">
-        <p>Copy Perp — Pacifica Hackathon 2026 · Track 3: Social &amp; Gamification</p>
-        <p className="mt-1">Built with 💙 by Paperclip AI · Builder Code: <code className="text-indigo-400">noivan</code></p>
+        <p>Copy Perp — Made by noivan</p>
       </footer>
     </main>
   );
