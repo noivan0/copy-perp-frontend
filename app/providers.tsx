@@ -13,6 +13,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         appearance: {
           theme: 'dark',
           accentColor: '#6366f1',
+          modalPosition: 'center',
         },
       }}
     >

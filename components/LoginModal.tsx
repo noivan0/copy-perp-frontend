@@ -7,6 +7,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   followAfterLogin?: string;
+  onSuccess?: () => void;
 }
 
 export function LoginModal({ isOpen, onClose, followAfterLogin }: Props) {
@@ -16,29 +17,21 @@ export function LoginModal({ isOpen, onClose, followAfterLogin }: Props) {
     if (authenticated) onClose();
   }, [authenticated, onClose]);
 
-  // ESC 키로 닫기
-  useEffect(() => {
-    if (!isOpen) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [isOpen, onClose]);
-
   if (!isOpen) return null;
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto"
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="relative bg-gray-900 border border-gray-700 rounded-2xl p-8 max-w-sm w-full my-auto">
-        {/* X 버튼 */}
+      <div className="bg-gray-900 border border-gray-700 rounded-2xl p-8 max-w-sm w-full relative">
+        {/* X close button */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors p-1 rounded-lg hover:bg-gray-800"
           aria-label="Close"
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
@@ -64,13 +57,10 @@ export function LoginModal({ isOpen, onClose, followAfterLogin }: Props) {
         </button>
 
         <p className="text-xs text-gray-600 text-center mb-4">
-          A Solana wallet is automatically created. No seed phrase needed.
+          A Solana wallet is automatically created for you. No seed phrase needed.
         </p>
 
-        <button
-          onClick={onClose}
-          className="w-full text-gray-500 hover:text-gray-300 text-sm py-2 transition-colors border border-gray-800 rounded-xl hover:border-gray-600"
-        >
+        <button onClick={onClose} className="w-full text-gray-500 hover:text-gray-300 text-sm py-2 transition-colors">
           Cancel
         </button>
       </div>
