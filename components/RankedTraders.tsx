@@ -263,7 +263,6 @@ export function RankedTraders() {
         isOpen={loginModal}
         onClose={() => { setLoginModal(false); setFollowTarget(undefined); }}
         followAfterLogin={followTarget}
-        onSuccess={() => setLoginModal(false)}
       />
 
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
