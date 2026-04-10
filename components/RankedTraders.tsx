@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { LoginModal } from './LoginModal';
 
+function safeNum(v: unknown, fb = 0): number { const n = Number(v); return isFinite(n) ? n : fb; }
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://copy-perp.onrender.com';
 
 interface CRSTrader {
@@ -73,9 +75,9 @@ function TraderCard({ trader, rank, onFollow }: {
 
   const gradeStyle = GRADE_COLORS[trader.grade] || GRADE_COLORS['D'];
   const ringStyle = GRADE_RING[trader.grade] || '';
-  const roi30 = trader.raw.roi_30d ?? 0;
-  const pnl30 = trader.raw.pnl_30d ?? 0;
-  const equity = trader.raw.equity ?? 0;
+  const roi30 = safeNum(trader.raw?.roi_30d);
+  const pnl30 = safeNum(trader.raw?.pnl_30d);
+  const equity = safeNum(trader.raw?.equity);
 
   return (
     <div className={`bg-gray-900 border border-gray-800 rounded-xl overflow-hidden ${ringStyle} hover:border-gray-700 transition-all`}>

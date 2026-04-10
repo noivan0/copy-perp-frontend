@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { LoginModal } from './LoginModal';
 
+function safeNum(v: unknown, fb = 0): number { const n = Number(v); return isFinite(n) ? n : fb; }
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://copy-perp.onrender.com';
 
 interface Trader {
@@ -179,12 +181,12 @@ export function Leaderboard() {
           <tbody>
             {traders.map((trader, idx) => {
               const isRecommended = TOP5_RECOMMENDED.has(trader.address);
-              const roi30 = trader.roi_30d ?? 0;
-              const roi7  = trader.roi_7d ?? 0;
-              const wr    = trader.win_rate ?? 0;
-              const pf    = trader.profit_factor ?? 0;
-              const score = trader.score ?? 0;
-              const pnl30 = trader.pnl_30d ?? 0;
+              const roi30 = safeNum(trader.roi_30d);
+              const roi7  = safeNum(trader.roi_7d);
+              const wr    = safeNum(trader.win_rate);
+              const pf    = safeNum(trader.profit_factor);
+              const score = safeNum(trader.score);
+              const pnl30 = safeNum(trader.pnl_30d);
 
               return (
                 <tr
