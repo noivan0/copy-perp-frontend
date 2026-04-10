@@ -13,10 +13,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
         appearance: {
           theme: 'dark',
           accentColor: '#6366f1',
+          modalPosition: 'center',
         },
+        // Privy v3: embeddedWallets.createOnLogin (flat, not nested under solana)
         embeddedWallets: {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          solana: { createOnLogin: 'users-without-wallets' } as any,
+          createOnLogin: 'users-without-wallets',
         },
       }}
     >

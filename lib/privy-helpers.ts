@@ -14,24 +14,30 @@ import type { User } from '@privy-io/react-auth';
 export function getSolanaAddress(user: User | null): string | undefined {
   if (!user) return undefined;
   
-  const accounts = user.linkedAccounts as Array<{
+  const accounts = (user.linkedAccounts ?? []) as Array<{
     type: string;
     chainType?: string;
     walletClientType?: string;
     address?: string;
   }>;
-  
-  // 임베디드 Solana 지갑 우선
-  const embedded = accounts?.find(
+
+  // 1순위: Privy 임베디드 Solana 지갑
+  const embedded = accounts.find(
     a => a.type === 'wallet' && a.chainType === 'solana' && a.walletClientType === 'privy'
   );
   if (embedded?.address) return embedded.address;
-  
-  // 외부 Solana 지갑 (Phantom 등)
-  const external = accounts?.find(
+
+  // 2순위: 외부 연결 Solana 지갑 (Phantom 등)
+  const external = accounts.find(
     a => a.type === 'wallet' && a.chainType === 'solana'
   );
-  return external?.address;
+  if (external?.address) return external.address;
+
+  // 3순위: chainType 없이 wallet 타입 (일부 Privy 버전 호환)
+  const anyWallet = accounts.find(
+    a => a.type === 'wallet' && a.address && !a.chainType?.startsWith('eip155')
+  );
+  return anyWallet?.address;
 }
 
 /**

@@ -61,13 +61,20 @@ function FollowButton({
 }) {
   const [following, setFollowing] = useState(false);
   const [done, setDone] = useState(false);
+  const [errMsg, setErrMsg] = useState('');
 
   const handleClick = async () => {
-    if (!isLoggedIn || !followerAddress) {
+    if (!isLoggedIn) {
       onFollowClick(trader.address);
       return;
     }
+    if (!followerAddress) {
+      setErrMsg('Wallet loading...');
+      setTimeout(() => setErrMsg(''), 3000);
+      return;
+    }
     setFollowing(true);
+    setErrMsg('');
     try {
       const res = await fetch(`${API_URL}/followers/onboard`, {
         method: 'POST',
@@ -75,12 +82,21 @@ function FollowButton({
         body: JSON.stringify({
           follower_address: followerAddress,
           traders: [trader.address],
-          copy_ratio: 0.1,
+          copy_ratio: 0.07,
           max_position_usdc: 50,
+          strategy: 'safe',
         }),
       });
       const data = await res.json();
-      if (data.ok) setDone(true);
+      if (data.ok) {
+        setDone(true);
+      } else {
+        setErrMsg(data.detail || 'Failed');
+        setTimeout(() => setErrMsg(''), 3000);
+      }
+    } catch {
+      setErrMsg('Network error');
+      setTimeout(() => setErrMsg(''), 3000);
     } finally {
       setFollowing(false);
     }
@@ -88,6 +104,10 @@ function FollowButton({
 
   if (done) return (
     <span className="text-green-400 text-sm font-medium">✅ Following</span>
+  );
+
+  if (errMsg) return (
+    <span className="text-red-400 text-xs px-2">{errMsg}</span>
   );
 
   return (
