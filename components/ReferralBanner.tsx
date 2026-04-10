@@ -15,7 +15,9 @@ export function ReferralBanner() {
   const [refCode] = useState(() => typeof window !== 'undefined' ? extractRefCode() : null);
 
   const address = getSolanaAddress(user ?? null);
-  const referralLink = address ? getReferralLink(address) : null;
+  // Fall back to privy user ID if no Solana wallet yet
+  const refKey = address ?? (user?.id ? user.id.replace('did:privy:', '').slice(0, 8) : null);
+  const referralLink = refKey ? getReferralLink(refKey) : null;
 
   useEffect(() => { fuulPageview(); }, []);
 
