@@ -1,0 +1,62 @@
+name: Deploy Frontend to Vercel
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+    inputs:
+      backend_url:
+        description: 'Backend URL (Railway)'
+        required: false
+        default: 'https://copy-perp-production.up.railway.app'
+
+jobs:
+  deploy:
+    name: 🌐 Vercel Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel
+
+      - name: Deploy to Vercel (Production)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          BACKEND_URL: ${{ github.event.inputs.backend_url || secrets.BACKEND_URL || 'https://copy-perp-production.up.railway.app' }}
+        run: |
+          vercel deploy --prod \
+            --token "$VERCEL_TOKEN" \
+            --yes \
+            2>&1 | tee /tmp/vercel-out.txt
+
+          FRONTEND_URL=$(grep -E "https://copy-perp" /tmp/vercel-out.txt | grep -v "Inspect" | tail -1 || grep "https://" /tmp/vercel-out.txt | tail -1)
+          echo "✅ Frontend: $FRONTEND_URL"
+          echo "FRONTEND_URL=$FRONTEND_URL" >> $GITHUB_ENV
+
+      - name: Set Vercel env vars
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          BACKEND_URL: ${{ secrets.BACKEND_URL || 'https://copy-perp-production.up.railway.app' }}
+        run: |
+          vercel env add NEXT_PUBLIC_PRIVY_APP_ID production \
+            --token "$VERCEL_TOKEN" <<< "cmmvoxcix058e0ckv7uhp9ip0" 2>/dev/null || true
+          vercel env add NEXT_PUBLIC_API_URL production \
+            --token "$VERCEL_TOKEN" <<< "$BACKEND_URL" 2>/dev/null || true
+          vercel env add NEXT_PUBLIC_BUILDER_CODE production \
+            --token "$VERCEL_TOKEN" <<< "noivan" 2>/dev/null || true
+
+      - name: Summary
+        run: |
+          echo "## 🌐 Vercel 배포 완료" >> $GITHUB_STEP_SUMMARY
+          echo "Frontend URL: $FRONTEND_URL" >> $GITHUB_STEP_SUMMARY
