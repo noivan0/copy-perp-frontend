@@ -102,7 +102,9 @@ function FollowButton({
       } else {
         const detail = typeof data.detail === 'string'
           ? data.detail
-          : data.detail?.error || data.error || 'Follow failed';
+          : data.detail?.error || data.error
+            || (data.errors?.length ? data.errors[0] : undefined)
+            || 'Follow failed — please try again';
         setErrMsg(detail);
         setTimeout(() => setErrMsg(''), 4000);
       }
@@ -136,6 +138,19 @@ function FollowButton({
     </button>
   );
 
+  // wallet 타임아웃 — 재연결 유도
+  if (walletTimedOut) return (
+    <div className="flex flex-col items-center gap-1">
+      <button
+        onClick={onLoginNeeded}
+        className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-2.5 rounded-lg text-xs font-medium transition-colors min-h-[44px]"
+      >
+        Reconnect
+      </button>
+      <span className="text-yellow-400 text-xs text-center">Wallet not ready</span>
+    </div>
+  );
+
   return (
     <div className="flex flex-col items-center gap-1">
       <button
@@ -148,10 +163,10 @@ function FollowButton({
             <span className="animate-spin w-3 h-3 border border-white border-t-transparent rounded-full inline-block" />
             Following...
           </>
-        ) : 'Follow'}
+        ) : 'Follow →'}
       </button>
       {errMsg && (
-        <span className="text-red-400 text-xs text-center max-w-[100px]">{errMsg}</span>
+        <span className="text-red-400 text-xs text-center w-24 leading-tight">{errMsg}</span>
       )}
     </div>
   );

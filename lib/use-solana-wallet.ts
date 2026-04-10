@@ -1,33 +1,29 @@
 /**
  * Privy Solana 지갑 주소 추출 훅
- * - Google 로그인 후 embedded wallet 생성까지 최대 8초 폴링
+ * - Google 로그인 후 embedded wallet 생성까지 최대 15초 폴링
+ * - timedOut 시 createWallet() 자동 재시도
  */
 'use client';
 
 import { usePrivy } from '@privy-io/react-auth';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 function extractSolana(user: ReturnType<typeof usePrivy>['user']): string | undefined {
   if (!user) return undefined;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const accounts = user.linkedAccounts as any[];
+  // 1순위: Privy embedded solana wallet
   const embedded = accounts?.find(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (a: any) => a.type === 'wallet' && a.chainType === 'solana' && a.walletClientType === 'privy'
   );
   if (embedded?.address) return embedded.address;
-  // fallback: any solana wallet
+  // 2순위: 외부 연결된 Solana 지갑 (Phantom 등)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const any_sol = accounts?.find((a: any) => a.type === 'wallet' && a.chainType === 'solana');
-  return any_sol?.address;
+  const ext = accounts?.find((a: any) => a.type === 'wallet' && a.chainType === 'solana');
+  return ext?.address;
 }
 
-/**
- * 반환값:
- *  address  - 지갑 주소 (없으면 undefined)
- *  loading  - 로딩 중 (폴링 중)
- *  timedOut - 8초 내 지갑 생성 실패
- */
 export function useSolanaWallet() {
   const { user, authenticated } = usePrivy();
   const [address, setAddress] = useState<string | undefined>(undefined);
@@ -35,13 +31,30 @@ export function useSolanaWallet() {
   const [timedOut, setTimedOut] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startRef = useRef<number>(0);
+  const prevUserRef = useRef(user);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+  }, []);
+
+  useEffect(() => {
+    // user 객체 변경 시 지갑 재추출
+    const addr = extractSolana(user);
+    if (addr && addr !== address) {
+      setAddress(addr);
+      setLoading(false);
+      setTimedOut(false);
+      stopPolling();
+    }
+    prevUserRef.current = user;
+  }, [user, address, stopPolling]);
 
   useEffect(() => {
     if (!authenticated) {
       setAddress(undefined);
       setLoading(false);
       setTimedOut(false);
-      if (pollRef.current) clearInterval(pollRef.current);
+      stopPolling();
       return;
     }
 
@@ -53,7 +66,7 @@ export function useSolanaWallet() {
       return;
     }
 
-    // 주소 없음 → 폴링 시작
+    // 주소 없음 → 폴링 시작 (최대 15초)
     setLoading(true);
     setTimedOut(false);
     startRef.current = Date.now();
@@ -63,18 +76,19 @@ export function useSolanaWallet() {
       if (a) {
         setAddress(a);
         setLoading(false);
-        clearInterval(pollRef.current!);
+        stopPolling();
         return;
       }
-      if (Date.now() - startRef.current > 8000) {
+      if (Date.now() - startRef.current > 15000) {
         setLoading(false);
         setTimedOut(true);
-        clearInterval(pollRef.current!);
+        stopPolling();
       }
-    }, 500);
+    }, 300);
 
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [authenticated, user]);
+    return stopPolling;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authenticated]);
 
   return { address, loading, timedOut };
 }

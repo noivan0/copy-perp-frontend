@@ -101,9 +101,9 @@ function FollowButton({
       return;
     }
     if (walletTimedOut || !walletAddress) {
-      setMsg('No Solana wallet found. Please reconnect.');
+      setMsg('Wallet not ready — please reconnect your wallet');
       setState('error');
-      setTimeout(() => setState('idle'), 5000);
+      setTimeout(() => setState('idle'), 6000);
       return;
     }
     setState('loading');
@@ -126,7 +126,9 @@ function FollowButton({
       } else {
         const errDetail = typeof data.detail === 'string'
           ? data.detail
-          : data.detail?.error || data.error || 'Follow failed';
+          : data.detail?.error || data.error
+            || (data.errors?.length ? data.errors[0] : undefined)
+            || 'Follow failed — please try again';
         setMsg(errDetail);
         setState('error');
         setTimeout(() => setState('idle'), 4000);
@@ -158,6 +160,19 @@ function FollowButton({
     </button>
   );
 
+  // wallet 타임아웃 — 재연결 유도
+  if (walletTimedOut) return (
+    <div className="flex flex-col items-end gap-1">
+      <button
+        onClick={onLoginNeeded}
+        className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-2.5 rounded-lg text-xs font-medium transition-colors min-h-[44px]"
+      >
+        Reconnect
+      </button>
+      <span className="text-yellow-400 text-xs text-right">Wallet not ready</span>
+    </div>
+  );
+
   return (
     <div className="flex flex-col items-end gap-1">
       <button
@@ -167,10 +182,10 @@ function FollowButton({
       >
         {state === 'loading' ? (
           <><span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin inline-block" /> Following...</>
-        ) : 'Follow'}
+        ) : 'Follow →'}
       </button>
       {state === 'error' && msg && (
-        <span className="text-xs text-red-400 text-right max-w-[140px]">{msg}</span>
+        <span className="text-xs text-red-400 text-right max-w-[140px] leading-tight">{msg}</span>
       )}
     </div>
   );
