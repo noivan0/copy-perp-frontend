@@ -3,10 +3,11 @@
 import { usePrivy } from '@privy-io/react-auth';
 import { useSolanaWallet } from '@/lib/use-solana-wallet';
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { getSolanaAddress, truncateAddress } from '@/lib/privy-helpers';
+import { truncateAddress } from '@/lib/privy-helpers';
 import { API_URL, DEFAULT_COPY_RATIO, DEFAULT_MAX_POSITION_USDC } from '@/lib/config';
 import { formatPnl, formatWinRate, formatAddr } from '@/lib/format';
 import { useToast } from '@/components/Toast';
+import { extractErrorMessage } from '@/lib/api';
 
 
 interface FollowerEntry {
@@ -223,7 +224,8 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
             : prev
         );
       } else {
-        showToast('Unfollow failed — try again', 'error');
+        const errMsg = await extractErrorMessage(res, 'Unfollow failed — try again');
+        showToast(errMsg, 'error');
       }
     } catch {
       showToast('Network error — try again', 'error');
@@ -408,6 +410,51 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
           </div>
         )}
       </div>
+
+      {/* ── 트레이더별 PnL 분해 (byTrader — following에 없는 트레이더도 표시) ── */}
+      {byTrader.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium text-gray-400 mb-3">
+            PnL by Trader (30d)
+            <span className="ml-2 text-xs text-gray-600">({byTrader.length})</span>
+          </h3>
+          <div className="overflow-x-auto rounded-xl border border-gray-800">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-gray-500 text-xs border-b border-gray-800 bg-gray-900/50">
+                  <th className="text-left py-2.5 px-3">Trader</th>
+                  <th className="text-right py-2.5 px-3">PnL (30d)</th>
+                  <th className="text-right py-2.5 px-3">Trades</th>
+                  <th className="text-right py-2.5 px-3">Win Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...byTrader]
+                  .sort((a, b) => safeNum(b.total_pnl) - safeNum(a.total_pnl))
+                  .map((t) => {
+                    const tPnl = safeNum(t.total_pnl);
+                    return (
+                      <tr key={t.trader_address} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+                        <td className="py-2 px-3 font-mono text-xs text-gray-300">
+                          {truncateAddress(t.trader_address, 8)}
+                        </td>
+                        <td className={`py-2 px-3 text-right font-mono text-xs font-medium ${tPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {fmtPnl(tPnl)}
+                        </td>
+                        <td className="py-2 px-3 text-right text-xs text-gray-400">
+                          {safeNum(t.trades)}
+                        </td>
+                        <td className="py-2 px-3 text-right text-xs text-gray-400">
+                          {formatWinRate(safeNum(t.win_rate), 0)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* ── 최근 Copy Trade ── */}
       <div>

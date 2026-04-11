@@ -1,4 +1,4 @@
-/* v4 — format helpers, toast notifications */
+/* v5 — sort toggle, skeleton, HTTP error codes */
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -8,6 +8,7 @@ import { useSolanaWallet } from '@/lib/use-solana-wallet';
 import { API_URL, DEFAULT_COPY_RATIO, DEFAULT_MAX_POSITION_USDC } from '@/lib/config';
 import { formatPct, formatAddr, formatPnl } from '@/lib/format';
 import { useToast } from '@/components/Toast';
+import { extractErrorMessage } from '@/lib/api';
 
 function safeNum(v: unknown, fb = 0): number { const n = Number(v); return isFinite(n) ? n : fb; }
 
@@ -26,6 +27,9 @@ interface Trader {
   active: number | boolean;
   composite_score?: number;
 }
+
+type SortKey = 'score' | 'roi_30d' | 'pnl_30d' | 'win_rate';
+type SortDir = 'desc' | 'asc';
 
 // Recommended: use API is_recommended field instead of hardcoded addresses
 
@@ -114,11 +118,14 @@ function FollowButton({
           setTimeout(() => window.dispatchEvent(new CustomEvent('portfolio:refresh')), 300);
         }
       } else {
-        const detail = typeof data.detail === 'string'
-          ? data.detail
-          : data.detail?.error || data.error
-            || (data.errors?.length ? data.errors[0] : undefined)
-            || 'Follow failed — please try again';
+        // HTTP 에러 코드별 메시지 추출
+        const detail = await extractErrorMessage(res,
+          typeof data.detail === 'string'
+            ? data.detail
+            : data.detail?.error || data.error
+              || (data.errors?.length ? data.errors[0] : undefined)
+              || 'Follow failed — please try again'
+        );
         setErrMsg(detail);
         showToast(detail, 'error');
         setTimeout(() => setErrMsg(''), 4000);
@@ -190,12 +197,87 @@ function FollowButton({
   );
 }
 
+// ── 스켈레톤 로딩 ──
+function LeaderboardSkeleton() {
+  return (
+    <div className="overflow-x-auto animate-pulse" aria-busy="true" aria-label="Loading leaderboard…">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-gray-800">
+            {['w-10','w-40','w-20','w-20','w-20','w-16','w-16','w-24','w-20'].map((w, i) => (
+              <th key={i} className={`py-3 px-4 ${w}`}>
+                <div className="h-3 bg-gray-800 rounded w-full" />
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <tr key={idx} className="border-b border-gray-800/50">
+              <td className="py-3 px-4"><div className="h-4 w-6 bg-gray-800 rounded" /></td>
+              <td className="py-3 px-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-gray-800" />
+                  <div className="space-y-1.5">
+                    <div className="h-3 w-28 bg-gray-800 rounded" />
+                    <div className="h-2 w-16 bg-gray-700 rounded" />
+                  </div>
+                </div>
+              </td>
+              {Array.from({ length: 6 }).map((_, j) => (
+                <td key={j} className="py-3 px-4 text-right">
+                  <div className="h-3 w-12 bg-gray-800 rounded ml-auto" />
+                </td>
+              ))}
+              <td className="py-3 px-4 text-center">
+                <div className="h-8 w-16 bg-gray-800 rounded-lg mx-auto" />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── 정렬 헤더 버튼 ──
+function SortHeader({
+  label,
+  sortKey,
+  currentSort,
+  currentDir,
+  onSort,
+  className = '',
+}: {
+  label: string;
+  sortKey: SortKey;
+  currentSort: SortKey;
+  currentDir: SortDir;
+  onSort: (key: SortKey) => void;
+  className?: string;
+}) {
+  const active = currentSort === sortKey;
+  return (
+    <th
+      className={`py-3 px-4 text-right cursor-pointer select-none hover:text-gray-300 transition-colors ${
+        active ? 'text-indigo-400' : 'text-gray-500'
+      } text-xs uppercase tracking-wide ${className}`}
+      onClick={() => onSort(sortKey)}
+      aria-sort={active ? (currentDir === 'desc' ? 'descending' : 'ascending') : 'none'}
+    >
+      {label} {active ? (currentDir === 'desc' ? '↓' : '↑') : '⇅'}
+    </th>
+  );
+}
+
 export function Leaderboard() {
   const { authenticated, login } = usePrivy();
   const { address: walletAddress, loading: walletLoading, timedOut: walletTimedOut } = useSolanaWallet();
   const [traders, setTraders] = useState<Trader[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>('score');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   const fetchTraders = useCallback(async () => {
     try {
@@ -219,11 +301,28 @@ export function Leaderboard() {
     if (login) login();
   };
 
-  if (loading) return (
-    <div className="flex justify-center py-12">
-      <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
-    </div>
-  );
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(d => d === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortKey(key);
+      setSortDir('desc');
+    }
+  };
+
+  // 정렬 적용
+  const sortedTraders = [...traders].sort((a, b) => {
+    let aVal: number, bVal: number;
+    switch (sortKey) {
+      case 'roi_30d':  aVal = safeNum(a.roi_30d); bVal = safeNum(b.roi_30d); break;
+      case 'pnl_30d':  aVal = safeNum(a.pnl_30d); bVal = safeNum(b.pnl_30d); break;
+      case 'win_rate': aVal = safeNum(a.win_rate); bVal = safeNum(b.win_rate); break;
+      default:         aVal = safeNum(a.composite_score ?? a.score); bVal = safeNum(b.composite_score ?? b.score);
+    }
+    return sortDir === 'desc' ? bVal - aVal : aVal - bVal;
+  });
+
+  if (loading) return <LeaderboardSkeleton />;
 
   if (fetchError) return (
     <div className="text-center py-12 text-red-400">
@@ -252,17 +351,17 @@ export function Leaderboard() {
           <tr className="border-b border-gray-800 text-gray-500 text-xs uppercase tracking-wide">
             <th className="text-left py-3 px-4 w-10">#</th>
             <th className="text-left py-3 px-4">Trader</th>
-            <th className="text-right py-3 px-4">30d ROI</th>
-            <th className="text-right py-3 px-4 hidden md:table-cell">7d ROI</th>
-            <th className="text-right py-3 px-4 hidden lg:table-cell">Win Rate</th>
-            <th className="text-right py-3 px-4 hidden lg:table-cell">PF</th>
-            <th className="text-right py-3 px-4 hidden xl:table-cell">Score</th>
-            <th className="text-right py-3 px-4">30d PnL</th>
-            <th className="text-center py-3 px-4">Follow</th>
+            <SortHeader label="30d ROI" sortKey="roi_30d" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+            <th className="text-right py-3 px-4 hidden md:table-cell text-xs uppercase tracking-wide text-gray-500">7d ROI</th>
+            <th className="text-right py-3 px-4 hidden lg:table-cell text-xs uppercase tracking-wide text-gray-500">Win Rate</th>
+            <th className="text-right py-3 px-4 hidden lg:table-cell text-xs uppercase tracking-wide text-gray-500">PF</th>
+            <SortHeader label="Score" sortKey="score" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} className="hidden xl:table-cell" />
+            <SortHeader label="30d PnL" sortKey="pnl_30d" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+            <th className="text-center py-3 px-4 text-xs uppercase tracking-wide text-gray-500">Follow</th>
           </tr>
         </thead>
         <tbody>
-          {traders.map((trader, idx) => {
+          {sortedTraders.map((trader, idx) => {
             const isRecommended = trader.is_recommended === true;
             const roi30 = safeNum(trader.roi_30d);
             const roi7  = safeNum(trader.roi_7d);
@@ -331,6 +430,9 @@ export function Leaderboard() {
           })}
         </tbody>
       </table>
+      <p className="text-xs text-gray-700 text-right mt-2 pr-2">
+        Click column headers (30d ROI / Score / 30d PnL) to sort ↑↓
+      </p>
     </div>
   );
 }

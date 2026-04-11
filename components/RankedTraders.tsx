@@ -4,7 +4,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { useSolanaWallet } from '@/lib/use-solana-wallet';
-import { API_URL, DEFAULT_COPY_RATIO, DEFAULT_MAX_POSITION_USDC } from '@/lib/config';
+import { API_URL, DEFAULT_COPY_RATIO, DEFAULT_MAX_POSITION_USDC, NETWORK } from '@/lib/config';
+import { extractErrorMessage } from '@/lib/api';
 import { formatPct, formatUSDC, formatAddr } from '@/lib/format';
 import { useToast } from '@/components/Toast';
 
@@ -149,11 +150,14 @@ function FollowButton({
           setTimeout(() => window.dispatchEvent(new CustomEvent('portfolio:refresh')), 300);
         }
       } else {
-        const errDetail = typeof data.detail === 'string'
-          ? data.detail
-          : data.detail?.error || data.error
-            || (data.errors?.length ? data.errors[0] : undefined)
-            || 'Follow failed — please try again';
+        // HTTP 에러 코드별 메시지 추출
+        const errDetail = await extractErrorMessage(res,
+          typeof data.detail === 'string'
+            ? data.detail
+            : data.detail?.error || data.error
+              || (data.errors?.length ? data.errors[0] : undefined)
+              || 'Follow failed — please try again'
+        );
         setMsg(errDetail);
         setState('error');
         showToast(errDetail, 'error');
@@ -533,8 +537,34 @@ export function RankedTraders() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16">
-          <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 animate-pulse" aria-busy="true" aria-label="Loading traders…">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+              <div className="p-4 flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-4 bg-gray-800 rounded" />
+                  <div className="w-9 h-9 rounded-full bg-gray-800" />
+                  <div className="space-y-2">
+                    <div className="h-3 w-28 bg-gray-800 rounded" />
+                    <div className="h-2 w-16 bg-gray-700 rounded" />
+                  </div>
+                </div>
+                <div className="text-right space-y-1">
+                  <div className="h-6 w-10 bg-gray-800 rounded ml-auto" />
+                  <div className="h-2 w-8 bg-gray-700 rounded ml-auto" />
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-px bg-gray-800 border-t border-gray-800">
+                {Array.from({ length: 4 }).map((_, j) => (
+                  <div key={j} className="bg-gray-900 p-3 text-center space-y-1.5">
+                    <div className="h-4 w-12 bg-gray-800 rounded mx-auto" />
+                    <div className="h-2 w-10 bg-gray-700 rounded mx-auto" />
+                  </div>
+                ))}
+              </div>
+              <div className="h-10 bg-gray-900 border-t border-gray-800/50" />
+            </div>
+          ))}
         </div>
       ) : fetchError ? (
         <div className="text-center py-16 text-red-400">
@@ -550,7 +580,7 @@ export function RankedTraders() {
       ) : traders.length === 0 ? (
         <div className="text-center py-16 text-gray-500">
           <div className="text-4xl mb-3">🔍</div>
-          <p className="mb-1">No {gradeFilter}-grade traders on testnet yet.</p>
+          <p className="mb-1">No {gradeFilter}-grade traders on {NETWORK} yet.</p>
           <p className="text-xs text-gray-600 mt-1">
             {gradeFilter === 'S' || gradeFilter === 'A'
               ? 'Try B or C to see available traders.'
