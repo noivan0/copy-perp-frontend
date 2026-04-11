@@ -6,8 +6,8 @@ import { usePrivy } from '@privy-io/react-auth';
 import { getSolanaAddress } from '@/lib/privy-helpers';
 import { useSolanaWallet } from '@/lib/use-solana-wallet';
 import { getReferralLink, extractRefCode, fuulPageview, fuulConnectWallet } from '@/lib/fuul';
+import { API_URL } from '@/lib/config';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://copy-perp.onrender.com';
 
 export function ReferralBanner() {
   const { user, authenticated } = usePrivy();

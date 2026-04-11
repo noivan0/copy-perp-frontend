@@ -4,10 +4,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { useSolanaWallet } from '@/lib/use-solana-wallet';
+import { API_URL, DEFAULT_COPY_RATIO, DEFAULT_MAX_POSITION_USDC } from '@/lib/config';
 
 function safeNum(v: unknown, fb = 0): number { const n = Number(v); return isFinite(n) ? n : fb; }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://copy-perp.onrender.com';
 
 interface Trader {
   address: string;
@@ -23,13 +23,7 @@ interface Trader {
   active: number | boolean;
 }
 
-const TOP5_RECOMMENDED = new Set([
-  'EcX5xSDT45Nvhi2gMTjTnhF3KT2w4sPF54esEZS3hwZu',
-  '4UBH19qUbXEaqyz9fKrFHuvj8BPMoM87H71s1YPKyGYq',
-  'A6VY4ZBUohgSLkwMuDwDvAnzgiXFB1eTDzaixyitPJep',
-  'EYhhf8u9M6kN9tCRVgd2Jki9fJm3XzJRnTF9k5eBC1q1',
-  'FuHMGqdrn77u944FSYvg9VTw3sD5RVeYS1ezLpGaFes7',
-]);
+// Recommended: use API is_recommended field instead of hardcoded addresses
 
 function RecommendedBadge({ alias }: { alias?: string }) {
   if (!alias) return null;
@@ -91,8 +85,8 @@ function FollowButton({
         body: JSON.stringify({
           follower_address: walletAddress,
           traders: [trader.address],
-          copy_ratio: 0.07,
-          max_position_usdc: 50,
+          copy_ratio: DEFAULT_COPY_RATIO,
+          max_position_usdc: DEFAULT_MAX_POSITION_USDC,
           strategy: 'safe',
         }),
       });
@@ -246,7 +240,7 @@ export function Leaderboard() {
         </thead>
         <tbody>
           {traders.map((trader, idx) => {
-            const isRecommended = TOP5_RECOMMENDED.has(trader.address);
+            const isRecommended = trader.is_recommended === true;
             const roi30 = safeNum(trader.roi_30d);
             const roi7  = safeNum(trader.roi_7d);
             const wr    = safeNum(trader.win_rate);

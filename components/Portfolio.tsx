@@ -4,8 +4,8 @@ import { usePrivy } from '@privy-io/react-auth';
 import { useSolanaWallet } from '@/lib/use-solana-wallet';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { getSolanaAddress, truncateAddress } from '@/lib/privy-helpers';
+import { API_URL, DEFAULT_COPY_RATIO, DEFAULT_MAX_POSITION_USDC } from '@/lib/config';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://copy-perp.onrender.com';
 
 interface FollowerEntry {
   address: string;
@@ -77,11 +77,15 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
     setError(null);
 
     try {
+      const safeJson = async (res: Response) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      };
       const [followingRes, pnlRes, byTraderRes, tradesRes] = await Promise.allSettled([
-        fetch(`${API_URL}/followers/list?follower_address=${walletAddress}`).then(r => r.json()),
-        fetch(`${API_URL}/pnl/${walletAddress}/summary?days=30`).then(r => r.json()),
-        fetch(`${API_URL}/pnl/${walletAddress}/by-trader`).then(r => r.json()),
-        fetch(`${API_URL}/pnl/${walletAddress}/trades?limit=20`).then(r => r.json()),
+        fetch(`${API_URL}/followers/list?follower_address=${walletAddress}`).then(safeJson),
+        fetch(`${API_URL}/pnl/${walletAddress}/summary?days=30`).then(safeJson),
+        fetch(`${API_URL}/pnl/${walletAddress}/by-trader`).then(safeJson),
+        fetch(`${API_URL}/pnl/${walletAddress}/trades?limit=20`).then(safeJson),
       ]);
 
       const followingData = followingRes.status === 'fulfilled' ? (followingRes.value?.data ?? []) : [];
@@ -100,8 +104,8 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
                 body: JSON.stringify({
                   follower_address: walletAddress,
                   traders: cachedTraders,
-                  copy_ratio: 0.07,
-                  max_position_usdc: 50,
+                  copy_ratio: DEFAULT_COPY_RATIO,
+                  max_position_usdc: DEFAULT_MAX_POSITION_USDC,
                   strategy: 'safe',
                 }),
               }).then(() => {
@@ -168,8 +172,8 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
                 body: JSON.stringify({
                   follower_address: walletAddress,
                   traders,
-                  copy_ratio: 0.07,
-                  max_position_usdc: 50,
+                  copy_ratio: DEFAULT_COPY_RATIO,
+                  max_position_usdc: DEFAULT_MAX_POSITION_USDC,
                   strategy: 'safe',
                 }),
               });

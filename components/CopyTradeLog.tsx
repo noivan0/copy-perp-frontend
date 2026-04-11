@@ -2,8 +2,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { API_URL } from '@/lib/config';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://copy-perp.onrender.com';
 
 function safeNum(v: unknown, fb = 0): number {
   const n = Number(v);
@@ -47,18 +47,20 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
   const [trades, setTrades] = useState<CopyTrade[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     const load = () => {
       const url = `${API_URL}/trades?limit=30${follower ? `&follower_address=${follower}` : ''}`;
       fetch(url)
-        .then(r => r.json())
+        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
         .then(d => {
           const data: CopyTrade[] = Array.isArray(d.data) ? d.data : [];
           setTrades(data);
           setSummary(d.summary || null);
+          setFetchError(false);
         })
-        .catch(() => {})
+        .catch(() => setFetchError(true))
         .finally(() => setLoading(false));
     };
     load();
@@ -69,6 +71,12 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
   if (loading) return (
     <div className="flex justify-center py-8">
       <div className="animate-spin w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full" />
+    </div>
+  );
+
+  if (fetchError) return (
+    <div className="text-center py-8 text-red-400 text-sm">
+      ⚠️ Failed to load trade history — retrying…
     </div>
   );
 

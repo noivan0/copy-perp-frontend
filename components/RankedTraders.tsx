@@ -4,10 +4,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { useSolanaWallet } from '@/lib/use-solana-wallet';
+import { API_URL, DEFAULT_COPY_RATIO, DEFAULT_MAX_POSITION_USDC } from '@/lib/config';
 
 function safeNum(v: unknown, fb = 0): number { const n = Number(v); return isFinite(n) ? n : fb; }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://copy-perp.onrender.com';
 
 interface CRSTrader {
   address: string;
@@ -115,8 +115,8 @@ function FollowButton({
         body: JSON.stringify({
           follower_address: walletAddress,
           traders: [traderAddr],
-          copy_ratio: 0.07,
-          max_position_usdc: 50,
+          copy_ratio: DEFAULT_COPY_RATIO,
+          max_position_usdc: DEFAULT_MAX_POSITION_USDC,
           strategy: 'safe',
         }),
       });
