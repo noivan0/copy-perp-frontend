@@ -1,7 +1,11 @@
 /**
- * Privy Solana 지갑 주소 추출 훅 v2
+ * Privy Solana 지갑 주소 추출 훅 v3
  * - Google 로그인 후 embedded wallet 생성까지 최대 30초 폴링
  * - timedOut 시 fallback 없이 "지갑 없음" 상태 유지 → 유저에게 안내
+ *
+ * Fix(v3): stale closure 버그 수정
+ * - setInterval 콜백 내에서 user가 클로저로 캡처되어 old user를 계속 참조하는 문제
+ * - userRef를 통해 항상 최신 user 참조를 유지 → 폴링 중 wallet 생성 즉시 감지
  */
 'use client';
 
@@ -32,12 +36,15 @@ export function useSolanaWallet() {
   const [timedOut, setTimedOut] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startRef = useRef<number>(0);
+  // v3: userRef — setInterval stale closure 방지
+  const userRef = useRef(user);
+  userRef.current = user;  // 매 render마다 최신 user로 갱신
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
   }, []);
 
-  // user 객체 변경 시 즉시 재추출
+  // user 객체 변경 시 즉시 재추출 (Privy가 wallet 추가 시 re-render 트리거)
   useEffect(() => {
     const addr = extractSolana(user);
     if (addr) {
@@ -70,7 +77,8 @@ export function useSolanaWallet() {
     startRef.current = Date.now();
 
     pollRef.current = setInterval(() => {
-      const a = extractSolana(user);
+      // v3 fix: userRef.current 사용 → 항상 최신 user 참조 (stale closure 방지)
+      const a = extractSolana(userRef.current);
       if (a) {
         setAddress(a);
         setLoading(false);
