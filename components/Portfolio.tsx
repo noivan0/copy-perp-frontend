@@ -217,7 +217,29 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
   };
 
   /* ── 미인증 → 섹션 전체 숨김 ── */
-  if (!authenticated) return null;
+  if (!authenticated) {
+    const placeholder = (
+      <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-8 text-center">
+        <div className="text-3xl mb-3">📊</div>
+        <p className="text-gray-400 text-sm">Connect your wallet to view your portfolio</p>
+      </div>
+    );
+    if (sectionMode) {
+      return (
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-semibold text-white">My Portfolio</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Your PnL, followed traders &amp; recent copy trades</p>
+            </div>
+            <span className="text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full">● 30s</span>
+          </div>
+          {placeholder}
+        </section>
+      );
+    }
+    return null;
+  }
 
   /* ── 로딩 ── */
   if (loading) {
@@ -248,25 +270,9 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
   const winRate = safeNum(pnlSummary?.win_rate) * 100; // API returns 0~1
   const totalTrades = safeNum(pnlSummary?.total_trades);
 
-  // sectionMode: section 헤더 포함 전체 렌더
-  if (sectionMode) {
-    return (
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-xl font-semibold text-white">My Portfolio</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Your PnL, followed traders & recent copy trades</p>
-          </div>
-          <span className="text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full">● 30s</span>
-        </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <Portfolio />
-        </div>
-      </section>
-    );
-  }
 
-  return (
+
+  const content = (
     <div className="space-y-6">
 
       {/* ── Stats 요약 ── */}
@@ -480,4 +486,22 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
       </div>
     </div>
   );
-}
+
+
+  if (sectionMode) {
+    return (
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-white">My Portfolio</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Your PnL, followed traders &amp; recent copy trades</p>
+          </div>
+          <span className="text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full">● 30s</span>
+        </div>
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+          {content}
+        </div>
+      </section>
+    );
+  }
+  return content;}
