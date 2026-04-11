@@ -183,6 +183,11 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
                          t.status === 'failed' ? '✗ Failed' :
                          '⏳ Pending'}
                       </span>
+                      {t.status === 'failed' && t.error_msg && (
+                        <div className="text-[10px] text-red-400/70 mt-0.5 max-w-[120px] truncate" title={t.error_msg}>
+                          {t.error_msg.length > 40 ? t.error_msg.slice(0, 40) + '…' : t.error_msg}
+                        </div>
+                      )}
                     </td>
                     <td className={`py-2 px-3 text-right font-mono ${
                       !hasPnl ? 'text-gray-600' :
