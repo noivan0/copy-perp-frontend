@@ -58,8 +58,10 @@ export function SignalFeed() {
     : '—';
 
   const fetchSignals = useCallback(() => {
-    fetch(`${API_URL}/signals?top_n=5`)
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10000);
+    fetch(`${API_URL}/signals?top_n=5`, { signal: ctrl.signal })
+      .then(r => { clearTimeout(timer); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(d => {
         const newFunding: MarketSignal[] = d.funding_extremes || [];
         const newDivergence: MarketSignal[] = d.oracle_mark_divergence || [];
@@ -78,6 +80,7 @@ export function SignalFeed() {
         setIsLoading(false);
       })
       .catch(() => {
+        clearTimeout(timer);
         setHasError(true);
         setIsLoading(false);
       });

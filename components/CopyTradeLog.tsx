@@ -54,7 +54,10 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
   const fetchTrades = useCallback(async () => {
     const url = `${API_URL}/trades?limit=30${follower ? `&follower_address=${follower}` : ''}`;
     try {
-      const r = await fetch(url);
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 10000);
+      const r = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(timer);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const d = await r.json();
       const data: CopyTrade[] = Array.isArray(d.data) ? d.data : [];

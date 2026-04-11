@@ -82,16 +82,19 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
     setError(null);
 
     try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 10000);
       const safeJson = async (res: Response) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       };
       const [followingRes, pnlRes, byTraderRes, tradesRes] = await Promise.allSettled([
-        fetch(`${API_URL}/followers/list?follower_address=${walletAddress}`).then(safeJson),
-        fetch(`${API_URL}/pnl/${walletAddress}/summary?days=30`).then(safeJson),
-        fetch(`${API_URL}/pnl/${walletAddress}/by-trader`).then(safeJson),
-        fetch(`${API_URL}/pnl/${walletAddress}/trades?limit=20`).then(safeJson),
+        fetch(`${API_URL}/followers/list?follower_address=${walletAddress}`, { signal: ctrl.signal }).then(safeJson),
+        fetch(`${API_URL}/pnl/${walletAddress}/summary?days=30`, { signal: ctrl.signal }).then(safeJson),
+        fetch(`${API_URL}/pnl/${walletAddress}/by-trader`, { signal: ctrl.signal }).then(safeJson),
+        fetch(`${API_URL}/pnl/${walletAddress}/trades?limit=20`, { signal: ctrl.signal }).then(safeJson),
       ]);
+      clearTimeout(timer);
 
       const followingData = followingRes.status === 'fulfilled' ? (followingRes.value?.data ?? []) : [];
 

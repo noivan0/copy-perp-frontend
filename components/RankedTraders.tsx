@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { useSolanaWallet } from '@/lib/use-solana-wallet';
 import { API_URL, NETWORK } from '@/lib/config';
-import { extractErrorMessage } from '@/lib/api';
+import { extractErrorMessage, httpErrorMessage } from '@/lib/api';
 import { formatPct, formatUSDC, formatAddr } from '@/lib/format';
 import { useToast } from '@/components/Toast';
 import { CopySettingsModal, type RiskMode } from '@/components/CopySettingsModal';
@@ -115,17 +115,22 @@ function FollowButton({
     setState('loading');
     setMsg('');
     try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 10000);
       const res = await fetch(`${API_URL}/followers/onboard`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: ctrl.signal,
         body: JSON.stringify({
           follower_address: walletAddress,
           traders: [traderAddr],
           copy_ratio: copyRatio,
           max_position_usdc: maxPositionUsdc,
+          risk_mode: riskMode,
           strategy: riskMode === 'conservative' ? 'safe' : riskMode === 'aggressive' ? 'growth' : 'safe',
         }),
       });
+      clearTimeout(timer);
       const data = await res.json();
       if (data.ok) {
         setState('done');
@@ -143,22 +148,23 @@ function FollowButton({
           setTimeout(() => window.dispatchEvent(new CustomEvent('portfolio:refresh')), 300);
         }
       } else {
-        const errDetail = await extractErrorMessage(res,
-          typeof data.detail === 'string'
-            ? data.detail
-            : data.detail?.error || data.error
-              || (data.errors?.length ? data.errors[0] : undefined)
-              || 'Follow failed — please try again'
-        );
+        const errDetail =
+          (typeof data.detail === 'string' ? data.detail : null) ??
+          data.detail?.error ?? data.error ??
+          (Array.isArray(data.errors) ? data.errors[0] : null) ??
+          httpErrorMessage(res.status);
         setMsg(errDetail);
         setState('error');
         showToast(errDetail, 'error');
         setTimeout(() => setState('idle'), 4000);
       }
-    } catch {
-      setMsg('Network error — try again');
+    } catch (e) {
+      const msg = e instanceof DOMException && e.name === 'AbortError'
+        ? 'Request timed out — try again'
+        : 'Network error — try again';
+      setMsg(msg);
       setState('error');
-      showToast('Network error — try again', 'error');
+      showToast(msg, 'error');
       setTimeout(() => setState('idle'), 4000);
     }
   };
@@ -465,11 +471,14 @@ export function RankedTraders() {
 
   const fetchRanked = useCallback(async () => {
     try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 10000);
       // Promise.allSettled: /traders가 실패해도 /traders/ranked는 표시 (graceful degradation)
       const [rankedResult, tradersResult] = await Promise.allSettled([
-        fetch(`${API_URL}/traders/ranked?limit=100&min_grade=C&exclude_disqualified=${!showDisqualified}`),
-        fetch(`${API_URL}/traders?limit=100`),
+        fetch(`${API_URL}/traders/ranked?limit=100&min_grade=C&exclude_disqualified=${!showDisqualified}`, { signal: ctrl.signal }),
+        fetch(`${API_URL}/traders?limit=100`, { signal: ctrl.signal }),
       ]);
+      clearTimeout(timer);
       if (rankedResult.status === 'rejected' || !rankedResult.value.ok) {
         throw new Error(`/traders/ranked 오류: ${rankedResult.status === 'rejected' ? rankedResult.reason : rankedResult.value.status}`);
       }
