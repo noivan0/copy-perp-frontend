@@ -63,18 +63,19 @@ interface CRSTrader {
   copyability_score?: number;
 }
 
+// R9: CRS 등급 색상 배지 — S=금, A=초록, B=파랑, C=노랑, D=빨강
 const GRADE_COLORS: Record<string, string> = {
   S: 'text-yellow-400 border-yellow-500/50 bg-yellow-500/10',
-  A: 'text-indigo-400 border-indigo-500/50 bg-indigo-500/10',
-  B: 'text-green-400 border-green-500/50 bg-green-500/10',
-  C: 'text-orange-400 border-orange-500/50 bg-orange-500/10',
+  A: 'text-green-400 border-green-500/50 bg-green-500/10',
+  B: 'text-blue-400 border-blue-500/50 bg-blue-500/10',
+  C: 'text-yellow-300 border-yellow-400/50 bg-yellow-400/10',
   D: 'text-red-400 border-red-500/50 bg-red-500/10',
 };
 
 const GRADE_RING: Record<string, string> = {
   S: 'ring-2 ring-yellow-500/30',
-  A: 'ring-1 ring-indigo-500/20',
-  B: '',
+  A: 'ring-1 ring-green-500/20',
+  B: 'ring-1 ring-blue-500/20',
   C: '',
   D: '',
 };

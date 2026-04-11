@@ -23,6 +23,8 @@ interface FollowerEntry {
 
 interface PnlSummary {
   total_pnl: number;
+  realized_pnl?: number;
+  unrealized_pnl?: number;
   win_rate: number;
   total_trades: number;
   win_count: number;
@@ -413,6 +415,8 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
 
   const { following, pnlSummary, byTrader, recentTrades } = state;
   const pnl = safeNum(pnlSummary?.total_pnl);
+  const realizedPnl = safeNum(pnlSummary?.realized_pnl ?? pnlSummary?.total_pnl);
+  const unrealizedPnl = safeNum(pnlSummary?.unrealized_pnl);
   const winRate = safeNum(pnlSummary?.win_rate) * 100; // API returns 0~1
   const totalTrades = safeNum(pnlSummary?.total_trades);
 
@@ -438,9 +442,9 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
             color: winRate >= 50 ? 'text-green-400' : 'text-red-400',
           },
           {
-            label: 'Total PnL (30d)',
-            value: fmtPnl(pnl),
-            color: pnl >= 0 ? 'text-green-400' : 'text-red-400',
+            label: 'Realized PnL (30d)',
+            value: fmtPnl(realizedPnl),
+            color: realizedPnl >= 0 ? 'text-green-400' : 'text-red-400',
           },
         ].map(({ label, value, color }) => (
           <div
@@ -452,6 +456,16 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
           </div>
         ))}
       </div>
+
+      {/* ── Unrealized PnL (포지션 있을 때만 표시) ── */}
+      {unrealizedPnl !== 0 && (
+        <div className="bg-gray-800/60 border border-gray-700/50 rounded-xl px-4 py-3 flex items-center justify-between">
+          <div className="text-xs text-gray-400">Unrealized PnL (open positions)</div>
+          <div className={`text-sm font-mono font-semibold ${unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {fmtPnl(unrealizedPnl)}
+          </div>
+        </div>
+      )}
 
       {/* ── 팔로잉 트레이더 ── */}
       <div>
