@@ -1,4 +1,4 @@
-/* v5 — error_msg 표시, ms timestamp 처리, 포트폴리오 연동 */
+/* v6 — useVisibleInterval 실제 호출, follower 변경 시 상태 초기화 */
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -50,23 +50,32 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
 
-  useEffect(() => {
-    const load = () => {
-      const url = `${API_URL}/trades?limit=30${follower ? `&follower_address=${follower}` : ''}`;
-      fetch(url)
-        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-        .then(d => {
-          const data: CopyTrade[] = Array.isArray(d.data) ? d.data : [];
-          setTrades(data);
-          setSummary(d.summary || null);
-          setFetchError(false);
-        })
-        .catch(() => setFetchError(true))
-        .finally(() => setLoading(false));
-    };
-    load();
-    // useVisibleInterval handles periodic refresh
+  const fetchTrades = useCallback(async () => {
+    const url = `${API_URL}/trades?limit=30${follower ? `&follower_address=${follower}` : ''}`;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      const data: CopyTrade[] = Array.isArray(d.data) ? d.data : [];
+      setTrades(data);
+      setSummary(d.summary || null);
+      setFetchError(false);
+    } catch {
+      setFetchError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [follower]);
+
+  // follower 변경 시 상태 초기화 후 재조회
+  useEffect(() => {
+    setLoading(true);
+    setFetchError(false);
+    fetchTrades();
+  }, [fetchTrades]);
+
+  // 15초마다 자동 갱신 (탭 활성 시에만)
+  useVisibleInterval(fetchTrades, 15000);
 
   if (loading) return (
     <div className="flex justify-center py-8">

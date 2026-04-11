@@ -28,6 +28,12 @@ interface CRSTrader {
     equity?: number;
     consistency?: number;
   };
+  trade_stats?: {
+    win_rate: number | null;
+    trade_count: number | null;
+    roi_30d: number | null;
+    data_source?: string;
+  };
   momentum_score?: number;
   profitability_score?: number;
   risk_score?: number;
@@ -281,10 +287,21 @@ function TraderCard({ trader, rank, authenticated, walletAddress, walletLoading,
           <div className="text-xs text-gray-500">30d ROI</div>
         </div>
         <div className="bg-gray-900 p-3 text-center">
-          <div className={`text-lg font-bold ${pnl30 >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {pnl30 >= 0 ? '+$' : '-$'}{Math.abs(pnl30).toLocaleString(undefined, {maximumFractionDigits: 0})}
-          </div>
-          <div className="text-xs text-gray-500">30d PnL</div>
+          {trader.trade_stats?.win_rate != null ? (
+            <>
+              <div className={`text-lg font-bold ${safeNum(trader.trade_stats.win_rate) >= 50 ? 'text-green-400' : 'text-yellow-400'}`}>
+                {safeNum(trader.trade_stats.win_rate).toFixed(0)}%
+              </div>
+              <div className="text-xs text-gray-500">Win Rate</div>
+            </>
+          ) : (
+            <>
+              <div className={`text-lg font-bold ${pnl30 >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {pnl30 >= 0 ? '+$' : '-$'}{Math.abs(pnl30).toLocaleString(undefined, {maximumFractionDigits: 0})}
+              </div>
+              <div className="text-xs text-gray-500">30d PnL</div>
+            </>
+          )}
         </div>
         <div className="bg-gray-900 p-3 text-center">
           <div className="text-lg font-bold text-indigo-300">
@@ -361,6 +378,7 @@ export function RankedTraders() {
   const [traders, setTraders] = useState<CRSTrader[]>([]);
   const [allTraders, setAllTraders] = useState<CRSTrader[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [gradeFilter, setGradeFilter] = useState('B');
   const [showDisqualified, setShowDisqualified] = useState(false);
   const [availableGrades, setAvailableGrades] = useState<Set<string>>(new Set());
@@ -406,8 +424,10 @@ export function RankedTraders() {
       const filterIdx = GRADE_ORDER.indexOf(gradeFilter);
       const filtered = merged.filter(t => GRADE_ORDER.indexOf(t.grade) >= 0 && GRADE_ORDER.indexOf(t.grade) <= filterIdx);
       setTraders(filtered);
+      setFetchError(false);
     } catch {
       setTraders([]);
+      setFetchError(true);
     } finally {
       setLoading(false);
     }
@@ -477,6 +497,17 @@ export function RankedTraders() {
       {loading ? (
         <div className="flex justify-center py-16">
           <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
+        </div>
+      ) : fetchError ? (
+        <div className="text-center py-16 text-red-400">
+          <div className="text-4xl mb-3">⚠️</div>
+          <p className="text-sm mb-3">Failed to load ranked traders — retrying…</p>
+          <button
+            onClick={fetchRanked}
+            className="text-indigo-400 text-sm hover:underline"
+          >
+            Retry now
+          </button>
         </div>
       ) : traders.length === 0 ? (
         <div className="text-center py-16 text-gray-500">

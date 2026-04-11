@@ -187,6 +187,7 @@ export function Leaderboard() {
   const { address: walletAddress, loading: walletLoading, timedOut: walletTimedOut } = useSolanaWallet();
   const [traders, setTraders] = useState<Trader[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   const fetchTraders = useCallback(async () => {
     try {
@@ -194,8 +195,10 @@ export function Leaderboard() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setTraders((data.data || []).filter((t: Trader) => Boolean(t.active)));
+      setFetchError(false);
     } catch (e) {
       console.error('Failed to fetch traders:', e);
+      setFetchError(true);
     } finally {
       setLoading(false);
     }
@@ -214,10 +217,23 @@ export function Leaderboard() {
     </div>
   );
 
+  if (fetchError) return (
+    <div className="text-center py-12 text-red-400">
+      <div className="text-4xl mb-3">⚠️</div>
+      <p className="text-sm">Failed to load leaderboard — retrying…</p>
+      <button
+        onClick={fetchTraders}
+        className="mt-3 text-indigo-400 text-sm hover:underline"
+      >
+        Retry now
+      </button>
+    </div>
+  );
+
   if (traders.length === 0) return (
     <div className="text-center py-12 text-gray-500">
       <div className="text-4xl mb-3">📊</div>
-      <p>Loading traders...</p>
+      <p>No active traders found.</p>
     </div>
   );
 
