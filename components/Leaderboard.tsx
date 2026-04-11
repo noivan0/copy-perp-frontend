@@ -1,4 +1,4 @@
-/* v5 — sort toggle, skeleton, HTTP error codes */
+/* v6 — last-updated display, consistent 30s polling */
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -11,6 +11,24 @@ import { useToast } from '@/components/Toast';
 import { extractErrorMessage } from '@/lib/api';
 
 function safeNum(v: unknown, fb = 0): number { const n = Number(v); return isFinite(n) ? n : fb; }
+
+/** "X seconds ago" 표시 훅 */
+function useRelativeTime(updatedAt: number | null): string {
+  const [label, setLabel] = useState('');
+  useEffect(() => {
+    if (!updatedAt) { setLabel(''); return; }
+    const tick = () => {
+      const secs = Math.floor((Date.now() - updatedAt) / 1000);
+      if (secs < 5) setLabel('just now');
+      else if (secs < 60) setLabel(`${secs}s ago`);
+      else setLabel(`${Math.floor(secs / 60)}m ago`);
+    };
+    tick();
+    const id = setInterval(tick, 5000);
+    return () => clearInterval(id);
+  }, [updatedAt]);
+  return label;
+}
 
 
 interface Trader {
@@ -278,6 +296,8 @@ export function Leaderboard() {
   const [fetchError, setFetchError] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>('score');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const relativeTime = useRelativeTime(updatedAt);
 
   const fetchTraders = useCallback(async () => {
     try {
@@ -289,6 +309,7 @@ export function Leaderboard() {
       const data = await res.json();
       setTraders((data.data || []).filter((t: Trader) => Boolean(t.active)));
       setFetchError(false);
+      setUpdatedAt(Date.now());
     } catch {
       setFetchError(true);
     } finally {
@@ -432,9 +453,14 @@ export function Leaderboard() {
           })}
         </tbody>
       </table>
-      <p className="text-xs text-gray-700 text-right mt-2 pr-2">
-        Click column headers (30d ROI / Score / 30d PnL) to sort ↑↓
-      </p>
+      <div className="flex items-center justify-between mt-2 px-2">
+        {updatedAt && (
+          <span className="text-xs text-gray-600">Last updated {relativeTime}</span>
+        )}
+        <p className="text-xs text-gray-700 ml-auto">
+          Click column headers (30d ROI / Score / 30d PnL) to sort ↑↓
+        </p>
+      </div>
     </div>
   );
 }

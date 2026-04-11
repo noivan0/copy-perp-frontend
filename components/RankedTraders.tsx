@@ -1,4 +1,4 @@
-/* v6 — copy settings modal, expected return simulation */
+/* v7 — Following badge, last-updated, useVisibleInterval, consistent 30s polling */
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -9,9 +9,27 @@ import { extractErrorMessage, httpErrorMessage } from '@/lib/api';
 import { formatPct, formatUSDC, formatAddr } from '@/lib/format';
 import { useToast } from '@/components/Toast';
 import { CopySettingsModal, type RiskMode } from '@/components/CopySettingsModal';
+import { useVisibleInterval } from '@/lib/use-visible-interval';
 
 function safeNum(v: unknown, fb = 0): number { const n = Number(v); return isFinite(n) ? n : fb; }
 
+/** "X seconds ago" 표시 훅 */
+function useRelativeTime(updatedAt: number | null): string {
+  const [label, setLabel] = useState('');
+  useEffect(() => {
+    if (!updatedAt) { setLabel(''); return; }
+    const tick = () => {
+      const secs = Math.floor((Date.now() - updatedAt) / 1000);
+      if (secs < 5) setLabel('just now');
+      else if (secs < 60) setLabel(`${secs}s ago`);
+      else setLabel(`${Math.floor(secs / 60)}m ago`);
+    };
+    tick();
+    const id = setInterval(tick, 5000);
+    return () => clearInterval(id);
+  }, [updatedAt]);
+  return label;
+}
 
 interface CRSTrader {
   address: string;
@@ -93,6 +111,7 @@ function FollowButton({
   walletAddress,
   walletLoading,
   walletTimedOut,
+  isFollowing,
   onLoginNeeded,
 }: {
   traderAddr: string;
@@ -103,12 +122,16 @@ function FollowButton({
   walletAddress?: string;
   walletLoading: boolean;
   walletTimedOut: boolean;
+  isFollowing: boolean;
   onLoginNeeded: () => void;
 }) {
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [msg, setMsg] = useState('');
   const [showModal, setShowModal] = useState(false);
   const { showToast } = useToast();
+
+  // 이미 팔로우 중인 경우 done 상태로 동기화
+  const effectivelyDone = state === 'done' || isFollowing;
 
   const doFollow = async (copyRatio: number, riskMode: RiskMode, maxPositionUsdc: number) => {
     setShowModal(false);
@@ -183,12 +206,13 @@ function FollowButton({
       setTimeout(() => setState('idle'), 6000);
       return;
     }
-    // Open settings modal instead of direct follow
     setShowModal(true);
   };
 
-  if (state === 'done') return (
-    <span className="text-green-400 text-sm font-medium px-2">✅ Following</span>
+  if (effectivelyDone) return (
+    <span className="text-green-400 text-sm font-medium px-2 flex items-center gap-1">
+      <span className="text-green-500">✓</span> Following
+    </span>
   );
 
   if (!authenticated) return (
@@ -249,17 +273,19 @@ function FollowButton({
   );
 }
 
-function TraderCard({ trader, rank, authenticated, walletAddress, walletLoading, walletTimedOut, onLoginNeeded }: {
+function TraderCard({ trader, rank, authenticated, walletAddress, walletLoading, walletTimedOut, followingAddresses, onLoginNeeded }: {
   trader: CRSTrader;
   rank: number;
   authenticated: boolean;
   walletAddress?: string;
   walletLoading: boolean;
   walletTimedOut: boolean;
+  followingAddresses: Set<string>;
   onLoginNeeded: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
 
+  const isFollowing = followingAddresses.has(trader.address);
   const gradeStyle = GRADE_COLORS[trader.grade] || GRADE_COLORS['D'];
   const ringStyle = GRADE_RING[trader.grade] || '';
   // roi_30d: raw 값 우선, 없으면 pnl/equity로 계산
@@ -277,7 +303,11 @@ function TraderCard({ trader, rank, authenticated, walletAddress, walletLoading,
   const showPreview = roi30 !== 0 && !trader.disqualified;
 
   return (
-    <div className={`bg-gray-900 border border-gray-800 rounded-xl overflow-hidden ${ringStyle} hover:border-gray-700 transition-all`}>
+    <div className={`bg-gray-900 border rounded-xl overflow-hidden ${ringStyle} transition-all ${
+      isFollowing
+        ? 'border-green-500/40 shadow-[0_0_0_1px_rgba(74,222,128,0.15)]'
+        : 'border-gray-800 hover:border-gray-700'
+    }`}>
       <div className="p-4 flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="text-gray-600 font-mono text-sm shrink-0 w-6 text-center">
@@ -297,6 +327,12 @@ function TraderCard({ trader, rank, authenticated, walletAddress, walletLoading,
               >
                 {trader.grade}
               </span>
+              {/* Following 배지 */}
+              {isFollowing && (
+                <span className="px-1.5 py-0.5 text-xs font-semibold rounded border bg-green-500/15 text-green-400 border-green-500/30 flex items-center gap-0.5">
+                  ✓ Following
+                </span>
+              )}
             </div>
             {trader.alias && (
               <div className="text-xs text-gray-500 truncate">{trader.alias}</div>
@@ -319,6 +355,7 @@ function TraderCard({ trader, rank, authenticated, walletAddress, walletLoading,
               walletAddress={walletAddress}
               walletLoading={walletLoading}
               walletTimedOut={walletTimedOut}
+              isFollowing={isFollowing}
               onLoginNeeded={onLoginNeeded}
             />
           )}
@@ -465,25 +502,66 @@ export function RankedTraders() {
   const [showDisqualified, setShowDisqualified] = useState(false);
   const [availableGrades, setAvailableGrades] = useState<Set<string>>(new Set());
   const [gradeCounts, setGradeCounts] = useState<Record<string, number>>({});
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  // 팔로우 중인 트레이더 주소 Set
+  const [followingAddresses, setFollowingAddresses] = useState<Set<string>>(new Set());
 
   const { authenticated, login } = usePrivy();
   const { address: walletAddress, loading: walletLoading, timedOut: walletTimedOut } = useSolanaWallet();
+
+  const relativeTime = useRelativeTime(updatedAt);
+
+  // 팔로잉 목록 로드 (로그인 시)
+  const fetchFollowing = useCallback(async () => {
+    if (!authenticated || !walletAddress) {
+      setFollowingAddresses(new Set());
+      return;
+    }
+    try {
+      // localStorage 캐시에서 즉시 로드
+      const key = `cp_following_${walletAddress}`;
+      const cached = localStorage.getItem(key);
+      if (cached) {
+        const arr: string[] = JSON.parse(cached);
+        setFollowingAddresses(new Set(arr));
+      }
+      // API에서 최신 데이터로 갱신
+      const res = await fetch(`${API_URL}/followers/list?follower_address=${walletAddress}`);
+      if (res.ok) {
+        const d = await res.json();
+        const addrs: string[] = (d.data || []).map((f: { trader_address: string }) => f.trader_address);
+        setFollowingAddresses(new Set(addrs));
+        localStorage.setItem(key, JSON.stringify(addrs));
+      }
+    } catch { /* ignore */ }
+  }, [authenticated, walletAddress]);
+
+  // 팔로우 성공 시 팔로잉 목록 갱신
+  useEffect(() => {
+    const handler = () => fetchFollowing();
+    window.addEventListener('followSuccess', handler);
+    window.addEventListener('portfolio:refresh', handler);
+    return () => {
+      window.removeEventListener('followSuccess', handler);
+      window.removeEventListener('portfolio:refresh', handler);
+    };
+  }, [fetchFollowing]);
+
+  useEffect(() => { fetchFollowing(); }, [fetchFollowing]);
 
   const fetchRanked = useCallback(async () => {
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 10000);
-      // Promise.allSettled: /traders가 실패해도 /traders/ranked는 표시 (graceful degradation)
       const [rankedResult, tradersResult] = await Promise.allSettled([
         fetch(`${API_URL}/traders/ranked?limit=100&min_grade=C&exclude_disqualified=${!showDisqualified}`, { signal: ctrl.signal }),
         fetch(`${API_URL}/traders?limit=100`, { signal: ctrl.signal }),
       ]);
       clearTimeout(timer);
       if (rankedResult.status === 'rejected' || !rankedResult.value.ok) {
-        throw new Error(`/traders/ranked 오류: ${rankedResult.status === 'rejected' ? rankedResult.reason : rankedResult.value.status}`);
+        throw new Error(`/traders/ranked 오류`);
       }
       const rankedData = await rankedResult.value.json();
-      // /traders 실패해도 ranked는 표시 (roi_30d는 raw에서 fallback)
       let tradersData: { data?: { address: string; roi_30d?: number }[] } = { data: [] };
       if (tradersResult.status === 'fulfilled' && tradersResult.value.ok) {
         tradersData = await tradersResult.value.json();
@@ -501,7 +579,6 @@ export function RankedTraders() {
 
       setAllTraders(merged);
 
-      // 실제 존재하는 등급 계산 + 등급별 카운트
       const grades = new Set(merged.map(t => t.grade));
       const counts: Record<string, number> = {};
       for (const t of merged) {
@@ -510,12 +587,12 @@ export function RankedTraders() {
       setAvailableGrades(grades);
       setGradeCounts(counts);
 
-      // 필터 적용: gradeFilter 이상의 CRS 등급만
       const GRADE_ORDER = ['S','A','B','C','D'];
       const filterIdx = GRADE_ORDER.indexOf(gradeFilter);
       const filtered = merged.filter(t => GRADE_ORDER.indexOf(t.grade) >= 0 && GRADE_ORDER.indexOf(t.grade) <= filterIdx);
       setTraders(filtered);
       setFetchError(false);
+      setUpdatedAt(Date.now());
     } catch {
       setTraders([]);
       setFetchError(true);
@@ -527,9 +604,10 @@ export function RankedTraders() {
   useEffect(() => {
     setLoading(true);
     fetchRanked();
-    const t = setInterval(fetchRanked, 60000);
-    return () => clearInterval(t);
   }, [fetchRanked]);
+
+  // 30초 폴링 (탭 활성 시에만)
+  useVisibleInterval(fetchRanked, 30000);
 
   // 데이터 로드 후 기본값을 가장 높은 등급으로 자동 설정
   useEffect(() => {
@@ -574,15 +652,20 @@ export function RankedTraders() {
             );
           })}
         </div>
-        <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={showDisqualified}
-            onChange={e => setShowDisqualified(e.target.checked)}
-            className="rounded"
-          />
-          Show filtered traders
-        </label>
+        <div className="flex items-center gap-3 flex-wrap">
+          {updatedAt && (
+            <span className="text-xs text-gray-600">Updated {relativeTime}</span>
+          )}
+          <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showDisqualified}
+              onChange={e => setShowDisqualified(e.target.checked)}
+              className="rounded"
+            />
+            Show filtered traders
+          </label>
+        </div>
       </div>
 
       {loading ? (
@@ -647,6 +730,7 @@ export function RankedTraders() {
               walletAddress={walletAddress}
               walletLoading={walletLoading}
               walletTimedOut={walletTimedOut}
+              followingAddresses={followingAddresses}
               onLoginNeeded={login}
             />
           ))}
@@ -654,7 +738,7 @@ export function RankedTraders() {
       )}
 
       <div className="mt-6 text-xs text-gray-600 text-center">
-        CRS: Profitability(30%) · Risk(25%) · Momentum(25%) · Consistency(15%) · Copyability(5%) · Updates every 60s
+        CRS: Profitability(30%) · Risk(25%) · Momentum(25%) · Consistency(15%) · Copyability(5%) · Updates every 30s
       </div>
     </>
   );

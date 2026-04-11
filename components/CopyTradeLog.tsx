@@ -1,4 +1,4 @@
-/* v7 — format.ts 통합, 모바일 테이블 min-w 추가 */
+/* v8 — skipped_insufficient 배지, last-updated, 30s polling, tooltip */
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -13,9 +13,26 @@ function safeNum(v: unknown, fb = 0): number {
 }
 
 function formatTime(ts: number): string {
-  // ms or seconds 자동 판별
   const ms = ts > 1e12 ? ts : ts * 1000;
   return new Date(ms).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+}
+
+/** "X seconds ago" 훅 */
+function useRelativeTime(updatedAt: number | null): string {
+  const [label, setLabel] = useState('');
+  useEffect(() => {
+    if (!updatedAt) { setLabel(''); return; }
+    const tick = () => {
+      const secs = Math.floor((Date.now() - updatedAt) / 1000);
+      if (secs < 5) setLabel('just now');
+      else if (secs < 60) setLabel(`${secs}s ago`);
+      else setLabel(`${Math.floor(secs / 60)}m ago`);
+    };
+    tick();
+    const id = setInterval(tick, 5000);
+    return () => clearInterval(id);
+  }, [updatedAt]);
+  return label;
 }
 
 interface CopyTrade {
@@ -45,11 +62,64 @@ interface Summary {
   win_rate_pct?: number;
 }
 
+/** 상태 배지 — 잔액 부족(skipped_insufficient) 포함 */
+function StatusBadge({ status, errorMsg }: { status: string; errorMsg?: string }) {
+  const isInsufficient = status === 'skipped_insufficient';
+  const isFailed = status === 'failed' || isInsufficient;
+
+  let badgeClass = '';
+  let label = '';
+  let tooltipText = errorMsg || '';
+
+  if (status === 'filled') {
+    badgeClass = 'bg-green-500/20 text-green-400';
+    label = '✓ Filled';
+  } else if (isInsufficient) {
+    badgeClass = 'bg-red-500/20 text-red-400';
+    label = '⚠ Low Funds';
+    tooltipText = tooltipText || 'Insufficient balance — trade was skipped. Please top up your account.';
+  } else if (status === 'failed') {
+    badgeClass = 'bg-red-500/20 text-red-400';
+    label = '✗ Failed';
+    tooltipText = tooltipText || 'Trade execution failed';
+  } else {
+    badgeClass = 'bg-yellow-500/20 text-yellow-400';
+    label = '⏳ Pending';
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span
+        className={`px-2 py-0.5 rounded-full text-xs font-medium cursor-help ${badgeClass}`}
+        title={tooltipText}
+      >
+        {label}
+      </span>
+      {isFailed && errorMsg && (
+        <div
+          className="text-[10px] text-red-400/70 max-w-[120px] truncate leading-tight"
+          title={errorMsg}
+        >
+          {errorMsg.length > 40 ? errorMsg.slice(0, 40) + '…' : errorMsg}
+        </div>
+      )}
+      {isInsufficient && !errorMsg && (
+        <div className="text-[10px] text-red-400/60 leading-tight text-center">
+          Insufficient funds
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function CopyTradeLog({ follower }: { follower?: string }) {
   const [trades, setTrades] = useState<CopyTrade[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+
+  const relativeTime = useRelativeTime(updatedAt);
 
   const fetchTrades = useCallback(async () => {
     const url = `${API_URL}/trades?limit=30${follower ? `&follower_address=${follower}` : ''}`;
@@ -64,6 +134,7 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
       setTrades(data);
       setSummary(d.summary || null);
       setFetchError(false);
+      setUpdatedAt(Date.now());
     } catch {
       setFetchError(true);
     } finally {
@@ -71,15 +142,14 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
     }
   }, [follower]);
 
-  // follower 변경 시 상태 초기화 후 재조회
   useEffect(() => {
     setLoading(true);
     setFetchError(false);
     fetchTrades();
   }, [fetchTrades]);
 
-  // 15초마다 자동 갱신 (탭 활성 시에만)
-  useVisibleInterval(fetchTrades, 15000);
+  // 30초마다 자동 갱신 (탭 활성 시에만) — SignalFeed 5초 외 전 섹션 30초 통일
+  useVisibleInterval(fetchTrades, 30000);
 
   if (loading) return (
     <div className="flex justify-center py-8">
@@ -98,6 +168,9 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
   const failed = safeNum(summary?.failed);
   const total = safeNum(summary?.total);
   const wr = safeNum(summary?.win_rate_pct);
+
+  // skipped_insufficient 거래 수 집계
+  const insufficientCount = trades.filter(t => t.status === 'skipped_insufficient').length;
 
   return (
     <div className="space-y-4">
@@ -129,6 +202,19 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
         </div>
       )}
 
+      {/* 잔액 부족 경고 배너 */}
+      {insufficientCount > 0 && (
+        <div className="flex items-start gap-3 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+          <span className="text-red-400 text-lg shrink-0">⚠️</span>
+          <div>
+            <p className="text-red-400 text-sm font-medium">Insufficient Funds — {insufficientCount} trade{insufficientCount > 1 ? 's' : ''} skipped</p>
+            <p className="text-red-400/70 text-xs mt-0.5">
+              Some copy trades were skipped due to insufficient balance. Please deposit more funds to continue copying.
+            </p>
+          </div>
+        </div>
+      )}
+
       {trades.length === 0 ? (
         <div className="text-center py-10 text-gray-500 text-sm">
           <div className="text-3xl mb-2">📋</div>
@@ -153,8 +239,13 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
               {trades.map(t => {
                 const pnlVal = safeNum(t.realized_pnl ?? t.pnl);
                 const hasPnl = (t.realized_pnl ?? t.pnl) != null;
+                const isInsufficient = t.status === 'skipped_insufficient';
+                const isFailed = t.status === 'failed' || isInsufficient;
                 return (
-                  <tr key={t.id} className="hover:bg-gray-800/20 transition-colors group">
+                  <tr
+                    key={t.id}
+                    className={`hover:bg-gray-800/20 transition-colors group ${isFailed ? 'bg-red-950/10' : ''}`}
+                  >
                     <td className="py-2 px-3 text-gray-500 whitespace-nowrap">
                       {formatTime(safeNum(t.created_at))}
                     </td>
@@ -174,20 +265,7 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
                       {formatPrice(safeNum(t.exec_price ?? parseFloat(t.price || '0')))}
                     </td>
                     <td className="py-2 px-3 text-center">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        t.status === 'filled' ? 'bg-green-500/20 text-green-400' :
-                        t.status === 'failed' ? 'bg-red-500/20 text-red-400' :
-                        'bg-yellow-500/20 text-yellow-400'
-                      }`} title={t.error_msg || ''}>
-                        {t.status === 'filled' ? '✓ Filled' :
-                         t.status === 'failed' ? '✗ Failed' :
-                         '⏳ Pending'}
-                      </span>
-                      {t.status === 'failed' && t.error_msg && (
-                        <div className="text-[10px] text-red-400/70 mt-0.5 max-w-[120px] truncate" title={t.error_msg}>
-                          {t.error_msg.length > 40 ? t.error_msg.slice(0, 40) + '…' : t.error_msg}
-                        </div>
-                      )}
+                      <StatusBadge status={t.status} errorMsg={t.error_msg} />
                     </td>
                     <td className={`py-2 px-3 text-right font-mono ${
                       !hasPnl ? 'text-gray-600' :
@@ -203,9 +281,10 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
         </div>
       )}
 
-      <p className="text-xs text-gray-600 text-center">
-        Auto-refresh every 15s
-      </p>
+      <div className="flex items-center justify-between text-xs text-gray-600">
+        {updatedAt && <span>Last updated {relativeTime}</span>}
+        <span className="ml-auto">Auto-refresh every 30s</span>
+      </div>
     </div>
   );
 }

@@ -6,10 +6,17 @@ import { Portfolio } from '@/components/Portfolio';
 import { ReferralBanner, RefCodeNotice } from '@/components/ReferralBanner';
 import { RankedTraders } from '@/components/RankedTraders';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { OfflineBanner } from '@/components/OfflineBanner';
+
+const APP_VERSION = '0.7.0';
+const DEPLOY_DATE = '2026-04-11';
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-gray-950">
+      {/* 오프라인 감지 배너 */}
+      <OfflineBanner />
+
       {/* Header */}
       <header className="border-b border-gray-800 sticky top-0 bg-gray-950/95 backdrop-blur z-40">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
@@ -171,8 +178,11 @@ export default function Home() {
         </section>
       </div>
 
-      <footer className="border-t border-gray-800 mt-16 py-8 text-center text-gray-600 text-sm">
+      <footer className="border-t border-gray-800 mt-16 py-8 text-center text-gray-600 text-sm space-y-1">
         <p>Copy Perp — Made by noivan · Pacifica Hackathon 2026</p>
+        <p className="text-xs text-gray-700">
+          v{APP_VERSION} · {DEPLOY_DATE} · R7
+        </p>
       </footer>
     </main>
   );

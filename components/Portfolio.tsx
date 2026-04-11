@@ -1,3 +1,4 @@
+/* v8 — unfollow confirm dialog, last-updated, useVisibleInterval, offline awareness */
 'use client';
 
 import { usePrivy } from '@privy-io/react-auth';
@@ -8,6 +9,7 @@ import { API_URL, DEFAULT_COPY_RATIO, DEFAULT_MAX_POSITION_USDC } from '@/lib/co
 import { formatPnl, formatWinRate, formatAddr } from '@/lib/format';
 import { useToast } from '@/components/Toast';
 import { extractErrorMessage } from '@/lib/api';
+import { useVisibleInterval } from '@/lib/use-visible-interval';
 
 
 interface FollowerEntry {
@@ -64,17 +66,79 @@ function fmtPnl(pnl: number): string {
   return formatPnl(pnl);
 }
 
+/** "X seconds ago" 표시 훅 */
+function useRelativeTime(updatedAt: number | null): string {
+  const [label, setLabel] = useState('');
+  useEffect(() => {
+    if (!updatedAt) { setLabel(''); return; }
+    const tick = () => {
+      const secs = Math.floor((Date.now() - updatedAt) / 1000);
+      if (secs < 5) setLabel('just now');
+      else if (secs < 60) setLabel(`${secs}s ago`);
+      else setLabel(`${Math.floor(secs / 60)}m ago`);
+    };
+    tick();
+    const id = setInterval(tick, 5000);
+    return () => clearInterval(id);
+  }, [updatedAt]);
+  return label;
+}
+
+/** 언팔로우 확인 다이얼로그 */
+function UnfollowConfirmDialog({
+  traderAddress,
+  onConfirm,
+  onCancel,
+}: {
+  traderAddress: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
+      <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+        <div className="text-2xl mb-3 text-center">⚠️</div>
+        <h3 className="text-white font-semibold text-center mb-2">Unfollow Trader?</h3>
+        <p className="text-gray-400 text-sm text-center mb-2">
+          You are about to unfollow{' '}
+          <span className="font-mono text-gray-200">
+            {traderAddress.slice(0, 8)}…{traderAddress.slice(-4)}
+          </span>
+        </p>
+        <p className="text-yellow-400/80 text-xs text-center bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-2 mb-5">
+          ℹ️ Unfollowing will stop new copy trades. Any open positions will remain open until you close them manually.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2.5 rounded-xl border border-gray-700 text-gray-300 text-sm hover:bg-gray-800 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors"
+          >
+            Unfollow
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
   const { authenticated, user } = usePrivy();
   const { address: walletAddress, loading: walletLoading, timedOut: walletTimedOut } = useSolanaWallet();
   const [state, setState] = useState<PortfolioState | null>(null);
   const [loading, setLoading] = useState(false);
   const [unfollowing, setUnfollowing] = useState<string | null>(null);
+  const [confirmUnfollow, setConfirmUnfollow] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   const lastStartupAt = useRef<number>(0);
   const { showToast } = useToast();
-
-  
+  const relativeTime = useRelativeTime(updatedAt);
 
   const fetchData = useCallback(async () => {
     if (!authenticated || !walletAddress) return;
@@ -133,6 +197,7 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
         byTrader: byTraderRes.status === 'fulfilled' ? (byTraderRes.value?.data ?? []) : [],
         recentTrades: tradesRes.status === 'fulfilled' ? (tradesRes.value?.data ?? []) : [],
       });
+      setUpdatedAt(Date.now());
     } catch (e) {
       setError('Failed to load portfolio data');
     } finally {
@@ -150,11 +215,8 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
     }
   }, [fetchData]);
 
-  // 30초마다 자동 갱신
-  useEffect(() => {
-    const timer = setInterval(fetchData, 30000);
-    return () => clearInterval(timer);
-  }, [fetchData]);
+  // 30초마다 자동 갱신 (탭 활성 시에만)
+  useVisibleInterval(fetchData, 30000);
 
   // Follow 이벤트 수신 시 자동 갱신
   useEffect(() => {
@@ -201,8 +263,14 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
     return () => clearInterval(t);
   }, [walletAddress, fetchData]);
 
-  const handleUnfollow = async (traderAddress: string) => {
-    if (!walletAddress || unfollowing) return;
+  const handleUnfollowRequest = (traderAddress: string) => {
+    setConfirmUnfollow(traderAddress);
+  };
+
+  const handleUnfollowConfirm = async () => {
+    const traderAddress = confirmUnfollow;
+    if (!traderAddress || !walletAddress || unfollowing) return;
+    setConfirmUnfollow(null);
     setUnfollowing(traderAddress);
     try {
       const res = await fetch(
@@ -263,7 +331,7 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
   }
 
   /* ── 로딩 ── */
-  if (loading) {
+  if (loading && !state) {
     return (
       <div className="flex justify-center py-10">
         <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
@@ -291,8 +359,6 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
   const winRate = safeNum(pnlSummary?.win_rate) * 100; // API returns 0~1
   const totalTrades = safeNum(pnlSummary?.total_trades);
 
-
-
   const content = (
     <div className="space-y-6">
 
@@ -311,7 +377,7 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
           },
           {
             label: 'Win Rate (30d)',
-            value: `${winRate.toFixed(1)}%`,  // winRate는 이미 *100 적용된 값
+            value: `${winRate.toFixed(1)}%`,
             color: winRate >= 50 ? 'text-green-400' : 'text-red-400',
           },
           {
@@ -399,7 +465,7 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
                     )}
 
                     <button
-                      onClick={() => handleUnfollow(f.trader_address)}
+                      onClick={() => handleUnfollowRequest(f.trader_address)}
                       disabled={isUnfollowing}
                       aria-label={`Unfollow trader ${f.trader_address.slice(0, 8)}`}
                       className="text-xs px-2.5 py-1 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -485,6 +551,7 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
                 {recentTrades.map((t) => {
                   const tradePnl = safeNum(t.pnl);
                   const size = safeNum(t.amount) * safeNum(t.price);
+                  const isFailed = t.status === 'failed' || t.status === 'skipped_insufficient';
                   return (
                     <tr
                       key={t.id}
@@ -521,12 +588,20 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
                           className={`text-xs px-2 py-0.5 rounded-full ${
                             t.status === 'filled'
                               ? 'bg-green-500/20 text-green-400'
-                              : t.status === 'failed'
+                              : isFailed
                               ? 'bg-red-500/20 text-red-400'
                               : 'bg-yellow-500/20 text-yellow-400'
                           }`}
+                          title={
+                            t.status === 'skipped_insufficient'
+                              ? 'Insufficient funds — trade was skipped'
+                              : t.status
+                          }
                         >
-                          {t.status}
+                          {t.status === 'filled' ? '✓ Filled'
+                            : t.status === 'skipped_insufficient' ? '⚠ Low Funds'
+                            : isFailed ? '✗ Failed'
+                            : t.status}
                         </span>
                       </td>
                       <td className="py-2 px-3 text-gray-600 font-mono text-xs hidden md:table-cell">
@@ -541,12 +616,15 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
         )}
       </div>
 
-      {/* ── 새로고침 ── */}
-      <div className="text-right">
+      {/* ── 새로고침 + 업데이트 시각 ── */}
+      <div className="flex items-center justify-between">
+        {updatedAt && (
+          <span className="text-xs text-gray-600">Last updated {relativeTime}</span>
+        )}
         <button
           onClick={fetchData}
           disabled={loading}
-          className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+          className="text-xs text-gray-500 hover:text-gray-300 transition-colors ml-auto"
         >
           ↻ Refresh
         </button>
@@ -554,21 +632,31 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
     </div>
   );
 
+  return (
+    <>
+      {/* 언팔로우 확인 다이얼로그 */}
+      {confirmUnfollow && (
+        <UnfollowConfirmDialog
+          traderAddress={confirmUnfollow}
+          onConfirm={handleUnfollowConfirm}
+          onCancel={() => setConfirmUnfollow(null)}
+        />
+      )}
 
-  if (sectionMode) {
-    return (
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-xl font-semibold text-white">My Portfolio</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Your PnL, followed traders &amp; recent copy trades</p>
+      {sectionMode ? (
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-semibold text-white">My Portfolio</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Your PnL, followed traders &amp; recent copy trades</p>
+            </div>
+            <span className="text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full">● 30s</span>
           </div>
-          <span className="text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full">● 30s</span>
-        </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          {content}
-        </div>
-      </section>
-    );
-  }
-  return content;}
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            {content}
+          </div>
+        </section>
+      ) : content}
+    </>
+  );
+}
