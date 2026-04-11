@@ -286,8 +286,7 @@ export function Leaderboard() {
       const data = await res.json();
       setTraders((data.data || []).filter((t: Trader) => Boolean(t.active)));
       setFetchError(false);
-    } catch (e) {
-      console.error('Failed to fetch traders:', e);
+    } catch {
       setFetchError(true);
     } finally {
       setLoading(false);

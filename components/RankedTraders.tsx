@@ -1,13 +1,14 @@
-/* v5 — format helpers, toast notifications */
+/* v6 — copy settings modal, expected return simulation */
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { useSolanaWallet } from '@/lib/use-solana-wallet';
-import { API_URL, DEFAULT_COPY_RATIO, DEFAULT_MAX_POSITION_USDC, NETWORK } from '@/lib/config';
+import { API_URL, NETWORK } from '@/lib/config';
 import { extractErrorMessage } from '@/lib/api';
 import { formatPct, formatUSDC, formatAddr } from '@/lib/format';
 import { useToast } from '@/components/Toast';
+import { CopySettingsModal, type RiskMode } from '@/components/CopySettingsModal';
 
 function safeNum(v: unknown, fb = 0): number { const n = Number(v); return isFinite(n) ? n : fb; }
 
@@ -85,6 +86,9 @@ function CRSBar({ value, label, color }: { value: number; label: string; color: 
 
 function FollowButton({
   traderAddr,
+  traderAlias,
+  roi30d,
+  copyRatioPct,
   authenticated,
   walletAddress,
   walletLoading,
@@ -92,6 +96,9 @@ function FollowButton({
   onLoginNeeded,
 }: {
   traderAddr: string;
+  traderAlias?: string;
+  roi30d: number;
+  copyRatioPct: number;
   authenticated: boolean;
   walletAddress?: string;
   walletLoading: boolean;
@@ -100,22 +107,11 @@ function FollowButton({
 }) {
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [msg, setMsg] = useState('');
+  const [showModal, setShowModal] = useState(false);
   const { showToast } = useToast();
 
-  const handleClick = async () => {
-    if (!authenticated) { onLoginNeeded(); return; }
-    if (walletLoading) {
-      setMsg('Wallet loading… please wait');
-      setState('error');
-      setTimeout(() => setState('idle'), 3000);
-      return;
-    }
-    if (!walletAddress) {
-      setMsg('Wallet not ready — please reconnect your wallet');
-      setState('error');
-      setTimeout(() => setState('idle'), 6000);
-      return;
-    }
+  const doFollow = async (copyRatio: number, riskMode: RiskMode, maxPositionUsdc: number) => {
+    setShowModal(false);
     setState('loading');
     setMsg('');
     try {
@@ -125,20 +121,18 @@ function FollowButton({
         body: JSON.stringify({
           follower_address: walletAddress,
           traders: [traderAddr],
-          copy_ratio: DEFAULT_COPY_RATIO,
-          max_position_usdc: DEFAULT_MAX_POSITION_USDC,
-          strategy: 'safe',
+          copy_ratio: copyRatio,
+          max_position_usdc: maxPositionUsdc,
+          strategy: riskMode === 'conservative' ? 'safe' : riskMode === 'aggressive' ? 'growth' : 'safe',
         }),
       });
       const data = await res.json();
       if (data.ok) {
         setState('done');
         showToast(`Now following ${formatAddr(traderAddr)} 🎯`, 'success');
-        // Portfolio 자동 갱신 트리거
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('followSuccess'));
         }
-        // localStorage 캐시 업데이트 (DB 리셋 대비)
         if (typeof window !== 'undefined' && walletAddress) {
           try {
             const key = `cp_following_${walletAddress}`;
@@ -146,11 +140,9 @@ function FollowButton({
             if (!cached.includes(traderAddr)) cached.push(traderAddr);
             localStorage.setItem(key, JSON.stringify(cached));
           } catch { /* ignore */ }
-          // Portfolio 즉시 갱신
           setTimeout(() => window.dispatchEvent(new CustomEvent('portfolio:refresh')), 300);
         }
       } else {
-        // HTTP 에러 코드별 메시지 추출
         const errDetail = await extractErrorMessage(res,
           typeof data.detail === 'string'
             ? data.detail
@@ -169,6 +161,24 @@ function FollowButton({
       showToast('Network error — try again', 'error');
       setTimeout(() => setState('idle'), 4000);
     }
+  };
+
+  const handleClick = () => {
+    if (!authenticated) { onLoginNeeded(); return; }
+    if (walletLoading) {
+      setMsg('Wallet loading… please wait');
+      setState('error');
+      setTimeout(() => setState('idle'), 3000);
+      return;
+    }
+    if (!walletAddress) {
+      setMsg('Wallet not ready — please reconnect your wallet');
+      setState('error');
+      setTimeout(() => setState('idle'), 6000);
+      return;
+    }
+    // Open settings modal instead of direct follow
+    setShowModal(true);
   };
 
   if (state === 'done') return (
@@ -191,7 +201,6 @@ function FollowButton({
     </button>
   );
 
-  // wallet 타임아웃 — 재연결 유도
   if (walletTimedOut) return (
     <div className="flex flex-col items-end gap-1">
       <button
@@ -205,20 +214,32 @@ function FollowButton({
   );
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <button
-        onClick={handleClick}
-        disabled={state === 'loading'}
-        className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 text-white px-3 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1.5 min-h-[44px]"
-      >
-        {state === 'loading' ? (
-          <><span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin inline-block" /> Following...</>
-        ) : 'Follow →'}
-      </button>
-      {state === 'error' && msg && (
-        <span className="text-xs text-red-400 text-right max-w-[140px] leading-tight">{msg}</span>
+    <>
+      {showModal && (
+        <CopySettingsModal
+          traderAddr={traderAddr}
+          traderAlias={traderAlias}
+          roi30d={roi30d / 100}
+          copyRatioPct={copyRatioPct}
+          onConfirm={doFollow}
+          onCancel={() => setShowModal(false)}
+        />
       )}
-    </div>
+      <div className="flex flex-col items-end gap-1">
+        <button
+          onClick={handleClick}
+          disabled={state === 'loading'}
+          className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 text-white px-3 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1.5 min-h-[44px]"
+        >
+          {state === 'loading' ? (
+            <><span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin inline-block" /> Following...</>
+          ) : 'Follow →'}
+        </button>
+        {state === 'error' && msg && (
+          <span className="text-xs text-red-400 text-right max-w-[140px] leading-tight">{msg}</span>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -242,6 +263,12 @@ function TraderCard({ trader, rank, authenticated, walletAddress, walletLoading,
   const roi30 = rawRoi !== 0 ? rawRoi
     : (equity > 0 && pnl30 !== 0) ? pnl30 / (equity - pnl30) * 100
     : 0;
+
+  // Expected return preview (with $500 baseline, using recommended copy_ratio_pct)
+  const PREVIEW_CAPITAL = 500;
+  const previewRatio = trader.copy_ratio_pct / 100;
+  const previewReturn = PREVIEW_CAPITAL * previewRatio * (roi30 / 100);
+  const showPreview = roi30 !== 0 && !trader.disqualified;
 
   return (
     <div className={`bg-gray-900 border border-gray-800 rounded-xl overflow-hidden ${ringStyle} hover:border-gray-700 transition-all`}>
@@ -279,6 +306,9 @@ function TraderCard({ trader, rank, authenticated, walletAddress, walletLoading,
           {!trader.disqualified && (
             <FollowButton
               traderAddr={trader.address}
+              traderAlias={trader.alias}
+              roi30d={roi30}
+              copyRatioPct={trader.copy_ratio_pct}
               authenticated={authenticated}
               walletAddress={walletAddress}
               walletLoading={walletLoading}
@@ -326,6 +356,16 @@ function TraderCard({ trader, rank, authenticated, walletAddress, walletLoading,
           <div className="text-xs text-gray-500">Copy Ratio</div>
         </div>
       </div>
+
+      {/* Expected return preview — $500 baseline */}
+      {showPreview && (
+        <div className="px-4 py-2 border-t border-gray-800/50 flex items-center justify-between text-xs">
+          <span className="text-gray-500">If you copy with $500 →</span>
+          <span className={`font-semibold ${previewReturn >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            est. {previewReturn >= 0 ? '+' : ''}{previewReturn.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })} / 30d
+          </span>
+        </div>
+      )}
 
       {(trader.strengths?.length > 0 || trader.warnings?.length > 0 || trader.disqualified) && (
         <div className="px-4 py-3 border-t border-gray-800/50">

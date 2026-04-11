@@ -25,6 +25,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  reactStrictMode: true,
   transpilePackages: ['bs58', 'base-x'],
   generateBuildId: async () => {
     return `build-${Date.now()}`;
