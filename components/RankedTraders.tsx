@@ -372,8 +372,8 @@ export function RankedTraders() {
   const fetchRanked = useCallback(async () => {
     try {
       const [rankedRes, tradersRes] = await Promise.all([
-        fetch(`${API_URL}/traders/ranked?limit=50&min_grade=C&exclude_disqualified=${!showDisqualified}`),
-        fetch(`${API_URL}/traders?limit=200`),
+        fetch(`${API_URL}/traders/ranked?limit=100&min_grade=C&exclude_disqualified=${!showDisqualified}`),
+        fetch(`${API_URL}/traders?limit=100`),
       ]);
       if (!rankedRes.ok) throw new Error(`/traders/ranked HTTP ${rankedRes.status}`);
       if (!tradersRes.ok) throw new Error(`/traders HTTP ${tradersRes.status}`);
