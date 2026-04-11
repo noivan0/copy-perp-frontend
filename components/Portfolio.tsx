@@ -92,7 +92,9 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
 
       // DB 리셋 감지: DB에 following 없는데 localStorage 캐시 있으면 자동 재등록
       if (followingData.length === 0 && typeof window !== 'undefined') {
-        const cached = localStorage.getItem(`cp_following_${walletAddress}`);
+        const cached = typeof window !== 'undefined'
+          ? localStorage.getItem(`cp_following_${walletAddress}`)
+          : null;
         if (cached) {
           try {
             const cachedTraders: string[] = JSON.parse(cached);
@@ -162,7 +164,9 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
         const d = await res.json();
         const sa: number = d.startup_at ?? 0;
         if (sa && lastStartupAt.current && sa !== lastStartupAt.current) {
-          const cached = localStorage.getItem(`cp_following_${walletAddress}`);
+          const cached = typeof window !== 'undefined'
+          ? localStorage.getItem(`cp_following_${walletAddress}`)
+          : null;
           if (cached) {
             const traders: string[] = JSON.parse(cached);
             if (traders.length > 0) {

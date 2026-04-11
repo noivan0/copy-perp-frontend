@@ -375,6 +375,8 @@ export function RankedTraders() {
         fetch(`${API_URL}/traders/ranked?limit=50&min_grade=C&exclude_disqualified=${!showDisqualified}`),
         fetch(`${API_URL}/traders?limit=200`),
       ]);
+      if (!rankedRes.ok) throw new Error(`/traders/ranked HTTP ${rankedRes.status}`);
+      if (!tradersRes.ok) throw new Error(`/traders HTTP ${tradersRes.status}`);
       const rankedData = await rankedRes.json();
       const tradersData = await tradersRes.json();
 
