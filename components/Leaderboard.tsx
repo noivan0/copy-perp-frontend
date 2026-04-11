@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useVisibleInterval } from '@/lib/use-visible-interval';
 import { usePrivy } from '@privy-io/react-auth';
 import { useSolanaWallet } from '@/lib/use-solana-wallet';
 import { API_URL, DEFAULT_COPY_RATIO, DEFAULT_MAX_POSITION_USDC } from '@/lib/config';
@@ -200,11 +201,8 @@ export function Leaderboard() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchTraders();
-    const timer = setInterval(fetchTraders, 30000);
-    return () => clearInterval(timer);
-  }, [fetchTraders]);
+  useEffect(() => { fetchTraders(); }, [fetchTraders]);
+  useVisibleInterval(fetchTraders, 30000);
 
   const handleLoginNeeded = () => {
     if (login) login();

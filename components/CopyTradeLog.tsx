@@ -1,7 +1,8 @@
 /* v5 — error_msg 표시, ms timestamp 처리, 포트폴리오 연동 */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { useVisibleInterval } from '@/lib/use-visible-interval';
 import { API_URL } from '@/lib/config';
 
 
@@ -64,8 +65,7 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
         .finally(() => setLoading(false));
     };
     load();
-    const timer = setInterval(load, 15000);
-    return () => clearInterval(timer);
+    // useVisibleInterval handles periodic refresh
   }, [follower]);
 
   if (loading) return (

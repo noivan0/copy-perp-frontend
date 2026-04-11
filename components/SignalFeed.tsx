@@ -1,7 +1,8 @@
 /* v2 */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { useVisibleInterval } from '@/lib/use-visible-interval';
 import { API_URL } from '@/lib/config';
 
 
@@ -27,9 +28,9 @@ export function SignalFeed() {
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchSignals = () => {
+  const fetchSignals = useCallback(() => {
     fetch(`${API_URL}/signals?top_n=5`)
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(d => {
         setFunding(d.funding_extremes || []);
         setDivergence(d.oracle_mark_divergence || []);
@@ -41,13 +42,10 @@ export function SignalFeed() {
         setHasError(true);
         setIsLoading(false);
       });
-  };
-
-  useEffect(() => {
-    fetchSignals();
-    const iv = setInterval(fetchSignals, 5000);
-    return () => clearInterval(iv);
   }, []);
+
+  useEffect(() => { fetchSignals(); }, [fetchSignals]);
+  useVisibleInterval(fetchSignals, 5000);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
