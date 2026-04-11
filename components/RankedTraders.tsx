@@ -154,12 +154,29 @@ function FollowButton({
         }),
       });
       clearTimeout(timer);
+
+      // 503 / 5xx 전용 처리
+      if (res.status === 503 || res.status >= 500) {
+        const errMsg = 'Service temporarily unavailable. Retrying in 30s…';
+        setMsg(errMsg);
+        setState('error');
+        showToast(errMsg, 'error');
+        setTimeout(() => setState('idle'), 4000);
+        return;
+      }
+
       const data = await res.json();
       if (data.ok) {
+        // API 응답의 effective_copy_ratio 반영
+        const effectivePct = data.effective_copy_ratio != null
+          ? ` (ratio: ${(data.effective_copy_ratio * 100).toFixed(1)}%)`
+          : '';
         setState('done');
-        showToast(`Now following ${formatAddr(traderAddr)} 🎯`, 'success');
+        showToast(`Now following ${formatAddr(traderAddr)} 🎯${effectivePct}`, 'success');
         if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('followSuccess'));
+          window.dispatchEvent(new CustomEvent('followSuccess', {
+            detail: { traderAddr, effectiveCopyRatio: data.effective_copy_ratio ?? copyRatio },
+          }));
         }
         if (typeof window !== 'undefined' && walletAddress) {
           try {

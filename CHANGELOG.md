@@ -5,6 +5,36 @@ Format: `[vX.X.X] YYYY-MM-DD — Description`
 
 ---
 
+## [v0.8.0] 2026-04-11 — Round 8: Production Deployment Validation
+
+### P0 — E2E Scenario Code Verification
+- **신규 사용자 플로우 완결** — Privy 로그인 → 임베디드 지갑 생성 → Follow 버튼 → CopySettingsModal → `/followers/onboard` API 흐름 코드 검증 완료
+- **CopySettingsModal API 연동 강화**
+  - `risk_mode` 파라미터 API body 포함 확인 ✅
+  - API 응답 `effective_copy_ratio` → Toast 메시지에 실시간 반영
+  - `followSuccess` 이벤트에 `detail.effectiveCopyRatio` 포함
+- **Portfolio 데이터 연결 확인** — `/pnl/{address}/summary`, `/by-trader`, `/trades` 엔드포인트 정상 연결
+  - pnl_by_trader 테이블 표시 ✅
+  - 팔로워 등록 전 empty state 개선 (CTA 추가)
+
+### P1 — Edge Case Handling
+- **지갑 주소 없을 때 보호 강화**
+  - `walletLoading` 중: "Creating your Solana wallet…" 스피너
+  - `walletTimedOut`: Refresh Page 버튼 + 안내 메시지
+  - 미인증 상태: "Sign in with Google/Email" 안내 + 키 메시지 추가
+- **503/5xx 서비스 다운 통합 메시지**
+  - 모든 섹션(Portfolio, CopyTradeLog, SignalFeed, RankedTraders)에 "Service temporarily unavailable. Retrying in 30s…" 일관 메시지
+  - Portfolio: 전체 fetch 실패 시 serviceDown 감지 로직 추가
+  - CopyTradeLog: `SERVICE_UNAVAILABLE` 에러 구분 → 맞춤형 메시지
+- **모바일 레이아웃 점검** — CopyTradeLog 래퍼 `overflow-x-hidden` 추가, 320px 스크롤 정상 처리
+
+### P2 — Deploy Readiness
+- **vercel.json 확인** — `NEXT_PUBLIC_API_URL=https://copy-perp.onrender.com` ✅
+- **환경변수 확인** — `.env.local`, `vercel.json` 모두 production URL 설정 ✅
+- **앱 버전** — v0.7.0 → v0.8.0, footer R7 → R8
+
+---
+
 ## [v0.7.0] 2026-04-11 — Round 7: Real User Scenario Completion
 
 ### P0 — User Flow (Critical)

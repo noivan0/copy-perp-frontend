@@ -8,7 +8,7 @@ import { RankedTraders } from '@/components/RankedTraders';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { OfflineBanner } from '@/components/OfflineBanner';
 
-const APP_VERSION = '0.7.0';
+const APP_VERSION = '0.8.0';
 const DEPLOY_DATE = '2026-04-11';
 
 export default function Home() {
@@ -170,7 +170,7 @@ export default function Home() {
               LIVE · 30s
             </span>
           </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 overflow-x-hidden">
             <ErrorBoundary name="CopyTradeLog">
               <CopyTradeLog />
             </ErrorBoundary>
@@ -181,7 +181,7 @@ export default function Home() {
       <footer className="border-t border-gray-800 mt-16 py-8 text-center text-gray-600 text-sm space-y-1">
         <p>Copy Perp — Made by noivan · Pacifica Hackathon 2026</p>
         <p className="text-xs text-gray-700">
-          v{APP_VERSION} · {DEPLOY_DATE} · R7
+          v{APP_VERSION} · {DEPLOY_DATE} · R8
         </p>
       </footer>
     </main>

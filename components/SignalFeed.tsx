@@ -47,6 +47,7 @@ export function SignalFeed() {
   const [divergence, setDivergence] = useState<MarketSignal[]>([]);
   const [updatedAtMs, setUpdatedAtMs] = useState<number | null>(null);
   const [hasError, setHasError] = useState(false);
+  const [serviceDown, setServiceDown] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   // 새 데이터 수신 시 하이라이트 트리거
   const [flashKey, setFlashKey] = useState(0);
@@ -61,7 +62,16 @@ export function SignalFeed() {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 10000);
     fetch(`${API_URL}/signals?top_n=5`, { signal: ctrl.signal })
-      .then(r => { clearTimeout(timer); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then(r => {
+        clearTimeout(timer);
+        if (r.status === 503 || r.status >= 500) {
+          setServiceDown(true);
+          throw new Error(`HTTP ${r.status}`);
+        }
+        setServiceDown(false);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(d => {
         const newFunding: MarketSignal[] = d.funding_extremes || [];
         const newDivergence: MarketSignal[] = d.oracle_mark_divergence || [];
@@ -103,7 +113,9 @@ export function SignalFeed() {
           {isLoading ? (
             <p className="text-gray-600 text-sm text-center py-4">Loading...</p>
           ) : hasError ? (
-            <p className="text-red-400 text-sm text-center py-4">⚠️ Signal data unavailable — retrying…</p>
+            <p className="text-red-400 text-sm text-center py-4">
+              {serviceDown ? '⚠️ Service temporarily unavailable. Retrying in 30s…' : '⚠️ Signal data unavailable — retrying…'}
+            </p>
           ) : funding.length === 0 ? (
             <p className="text-gray-600 text-sm text-center py-4">No funding extremes</p>
           ) : (
@@ -151,7 +163,9 @@ export function SignalFeed() {
           {isLoading ? (
             <p className="text-gray-600 text-sm text-center py-4">Loading...</p>
           ) : hasError ? (
-            <p className="text-red-400 text-sm text-center py-4">⚠️ Data unavailable</p>
+            <p className="text-red-400 text-sm text-center py-4">
+              {serviceDown ? '⚠️ Service temporarily unavailable. Retrying in 30s…' : '⚠️ Data unavailable'}
+            </p>
           ) : divergence.length === 0 ? (
             <p className="text-gray-600 text-sm text-center py-4">No significant divergence</p>
           ) : (

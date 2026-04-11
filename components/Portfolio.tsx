@@ -160,6 +160,15 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
       ]);
       clearTimeout(timer);
 
+      // 503 / 5xx — 전체 서비스 다운 감지
+      const allFailed = [followingRes, pnlRes, byTraderRes, tradesRes].every(
+        r => r.status === 'rejected' && (r.reason?.message?.includes('503') || r.reason?.message?.includes('HTTP 5'))
+      );
+      if (allFailed) {
+        setError('Service temporarily unavailable. Retrying in 30s…');
+        return;
+      }
+
       const followingData = followingRes.status === 'fulfilled' ? (followingRes.value?.data ?? []) : [];
 
       // DB 리셋 감지: DB에 following 없는데 localStorage 캐시 있으면 자동 재등록
@@ -310,7 +319,15 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
     const placeholder = (
       <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-8 text-center">
         <div className="text-3xl mb-3">📊</div>
-        <p className="text-gray-400 text-sm">Connect your wallet to view your portfolio</p>
+        <p className="text-gray-400 text-sm font-medium mb-1">Connect your wallet to view your portfolio</p>
+        <p className="text-gray-600 text-xs mb-4">
+          Sign in with Google or Email — Solana wallet auto-created
+        </p>
+        <div className="flex justify-center gap-3 text-xs text-gray-500">
+          <span>🔐 Non-custodial</span>
+          <span>⚡ Instant setup</span>
+          <span>💰 Copy top traders</span>
+        </div>
       </div>
     );
     if (sectionMode) {
@@ -330,7 +347,39 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
     return null;
   }
 
-  /* ── 로딩 ── */
+  /* ── 인증됐지만 지갑 주소 없음 (생성 중 / 타임아웃) ── */
+  if (!walletLoading && !walletAddress && !walletTimedOut) {
+    // 지갑 주소가 확정되지 않은 상태 — 폴링 중이므로 loading 표시
+  }
+
+  /* ── 지갑 로딩 중 (임베디드 지갑 생성 대기) ── */
+  if (walletLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 gap-3 text-gray-500">
+        <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
+        <p className="text-sm">Creating your Solana wallet…</p>
+      </div>
+    );
+  }
+
+  /* ── 지갑 타임아웃 (30초 초과) ── */
+  if (walletTimedOut) {
+    return (
+      <div className="text-center py-10 text-yellow-400/80">
+        <div className="text-3xl mb-3">⚠️</div>
+        <p className="text-sm font-medium mb-1">Wallet creation timed out</p>
+        <p className="text-xs text-gray-500 mb-3">Please refresh the page to retry</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="text-indigo-400 text-sm hover:underline"
+        >
+          Refresh Page
+        </button>
+      </div>
+    );
+  }
+
+  /* ── 데이터 로딩 ── */
   if (loading && !state) {
     return (
       <div className="flex justify-center py-10">

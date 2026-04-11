@@ -117,6 +117,7 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
+  const [serviceDown, setServiceDown] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
   const relativeTime = useRelativeTime(updatedAt);
@@ -128,6 +129,9 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
       const timer = setTimeout(() => ctrl.abort(), 10000);
       const r = await fetch(url, { signal: ctrl.signal });
       clearTimeout(timer);
+      if (r.status === 503 || r.status >= 500) {
+        throw new Error(`SERVICE_UNAVAILABLE:${r.status}`);
+      }
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const d = await r.json();
       const data: CopyTrade[] = Array.isArray(d.data) ? d.data : [];
@@ -135,8 +139,10 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
       setSummary(d.summary || null);
       setFetchError(false);
       setUpdatedAt(Date.now());
-    } catch {
+    } catch (err) {
+      const isUnavailable = err instanceof Error && err.message.startsWith('SERVICE_UNAVAILABLE');
       setFetchError(true);
+      setServiceDown(isUnavailable);
     } finally {
       setLoading(false);
     }
@@ -158,8 +164,19 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
   );
 
   if (fetchError) return (
-    <div className="text-center py-8 text-red-400 text-sm">
-      ⚠️ Failed to load trade history — retrying…
+    <div className="text-center py-8 text-red-400 text-sm space-y-2">
+      <div className="text-2xl">⚠️</div>
+      <p className="font-medium">
+        {serviceDown
+          ? 'Service temporarily unavailable. Retrying in 30s…'
+          : 'Failed to load trade history — retrying…'}
+      </p>
+      <button
+        onClick={fetchTrades}
+        className="text-indigo-400 text-xs hover:underline"
+      >
+        Retry now
+      </button>
     </div>
   );
 
