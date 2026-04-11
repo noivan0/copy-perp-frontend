@@ -656,7 +656,7 @@ export function RankedTraders() {
                 onClick={() => setGradeFilter(g)}
                 disabled={!hasTraders}
                 title={GRADE_DESC[g]}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
+                className={`px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors border ${
                   gradeFilter === g
                     ? GRADE_COLORS[g]
                     : hasTraders
