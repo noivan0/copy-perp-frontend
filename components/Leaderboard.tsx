@@ -134,6 +134,7 @@ function FollowButton({
   if (!isLoggedIn) return (
     <button
       onClick={onLoginNeeded}
+      aria-label={`Follow trader ${trader.address.slice(0, 8)}`}
       className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2.5 rounded-lg text-sm font-medium transition-colors min-h-[44px]"
     >
       Follow
@@ -166,6 +167,7 @@ function FollowButton({
       <button
         onClick={handleClick}
         disabled={following}
+        aria-label={`Follow trader ${trader.address.slice(0, 8)}`}
         className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 text-white px-3 py-2.5 rounded-lg text-sm font-medium transition-colors min-h-[44px] flex items-center gap-1.5"
       >
         {following ? (

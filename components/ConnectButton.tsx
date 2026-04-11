@@ -42,6 +42,7 @@ export function ConnectButton() {
       </div>
       <button
         onClick={logout}
+        aria-label="Sign out and disconnect wallet"
         className="text-gray-500 hover:text-gray-300 text-sm transition-colors"
       >
         Sign out

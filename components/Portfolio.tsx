@@ -389,6 +389,7 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
                     <button
                       onClick={() => handleUnfollow(f.trader_address)}
                       disabled={isUnfollowing}
+                      aria-label={`Unfollow trader ${f.trader_address.slice(0, 8)}`}
                       className="text-xs px-2.5 py-1 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isUnfollowing ? '...' : 'Unfollow'}

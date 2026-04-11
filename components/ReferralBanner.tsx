@@ -100,7 +100,7 @@ export function RefCodeNotice() {
           You were invited with referral code <span className="font-mono font-bold">{refCode}</span>
         </span>
       </div>
-      <button onClick={() => setVisible(false)} className="text-gray-500 hover:text-white text-sm">✕</button>
+      <button onClick={() => setVisible(false)} className="text-gray-500 hover:text-white text-sm" aria-label="Dismiss referral notice">✕</button>
     </div>
   );
 }

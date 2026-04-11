@@ -337,6 +337,8 @@ function TraderCard({ trader, rank, authenticated, walletAddress, walletLoading,
 
       <button
         onClick={() => setExpanded(!expanded)}
+        aria-label={expanded ? 'Collapse trader analysis' : 'Show full trader analysis'}
+        aria-expanded={expanded}
         className="w-full py-3 text-xs text-gray-600 hover:text-gray-400 border-t border-gray-800/50 transition-colors flex items-center justify-center gap-1 min-h-[44px]"
       >
         {expanded ? 'Collapse ▲' : 'Full Analysis ▼'}
