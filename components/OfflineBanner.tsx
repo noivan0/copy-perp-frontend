@@ -56,12 +56,12 @@ export function OfflineBanner() {
       {isOffline ? (
         <>
           <span className="w-2 h-2 bg-white rounded-full opacity-80 animate-pulse" />
-          연결 끊김 — 인터넷 연결을 확인해주세요
+          No internet connection — please check your network
         </>
       ) : (
         <>
           <span>✓</span>
-          재연결됨 — 데이터를 새로 불러오는 중…
+          Reconnected — refreshing data…
         </>
       )}
     </div>

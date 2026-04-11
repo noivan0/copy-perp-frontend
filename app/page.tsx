@@ -70,7 +70,7 @@ export default function Home() {
 
         {/* How It Works — 상단 배치로 흐름 이해 먼저 */}
         <section>
-          <h2 className="text-lg font-semibold text-white mb-4 text-center">How It Works</h2>
+          <h2 className="text-xl font-semibold text-white mb-4 text-center">How It Works</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
               { num: '01', icon: '🔑', title: 'Connect', desc: 'Sign in with Google. Solana wallet auto-created.' },

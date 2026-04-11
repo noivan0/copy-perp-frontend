@@ -1,4 +1,4 @@
-/* v6 — last-updated display, consistent 30s polling */
+/* v7 — agent bind check, consistent 30s polling */
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -9,6 +9,7 @@ import { API_URL, DEFAULT_COPY_RATIO, DEFAULT_MAX_POSITION_USDC } from '@/lib/co
 import { formatPct, formatAddr, formatPnl } from '@/lib/format';
 import { useToast } from '@/components/Toast';
 import { extractErrorMessage } from '@/lib/api';
+import { AgentBindModal } from '@/components/AgentBindModal';
 
 function safeNum(v: unknown, fb = 0): number { const n = Number(v); return isFinite(n) ? n : fb; }
 
@@ -86,6 +87,7 @@ function FollowButton({
   const [following, setFollowing] = useState(false);
   const [done, setDone] = useState(false);
   const [errMsg, setErrMsg] = useState('');
+  const [showBindModal, setShowBindModal] = useState(false);
   const { showToast } = useToast();
 
   const handleClick = async () => {
@@ -103,6 +105,28 @@ function FollowButton({
       setTimeout(() => setErrMsg(''), 5000);
       return;
     }
+    // Agent bind 체크
+    const bindKey = `cp_agent_bound_${walletAddress}`;
+    let alreadyBound = false;
+    try {
+      const cached = typeof window !== 'undefined' ? localStorage.getItem(bindKey) : null;
+      if (cached === '1') {
+        alreadyBound = true;
+      } else {
+        const r = await fetch(`${API_URL}/followers/${walletAddress}/portfolio`, { signal: AbortSignal.timeout(4000) }).catch(() => null);
+        if (r?.ok) {
+          const pd = await r.json();
+          alreadyBound = pd?.agent_bound === true;
+          if (alreadyBound) { try { localStorage.setItem(bindKey, '1'); } catch {/* */} }
+        }
+      }
+    } catch {/* 실패 시 bind 모달 표시 */}
+
+    if (!alreadyBound) {
+      setShowBindModal(true);
+      return;
+    }
+
     setFollowing(true);
     setErrMsg('');
     try {
@@ -156,6 +180,18 @@ function FollowButton({
       setFollowing(false);
     }
   };
+
+  if (showBindModal && walletAddress) return (
+    <AgentBindModal
+      walletAddress={walletAddress}
+      onComplete={() => {
+        try { localStorage.setItem(`cp_agent_bound_${walletAddress}`, '1'); } catch {/* */}
+        setShowBindModal(false);
+        handleClick();
+      }}
+      onSkip={() => setShowBindModal(false)}
+    />
+  );
 
   if (done) return (
     <span className="text-green-400 text-sm font-medium">✅ Following</span>

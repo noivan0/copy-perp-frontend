@@ -1,7 +1,7 @@
 /* v7 — Following badge, last-updated, useVisibleInterval, consistent 30s polling */
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { useSolanaWallet } from '@/lib/use-solana-wallet';
 import { API_URL, NETWORK } from '@/lib/config';
@@ -9,6 +9,7 @@ import { extractErrorMessage, httpErrorMessage } from '@/lib/api';
 import { formatPct, formatUSDC, formatAddr } from '@/lib/format';
 import { useToast } from '@/components/Toast';
 import { CopySettingsModal, type RiskMode } from '@/components/CopySettingsModal';
+import { AgentBindModal } from '@/components/AgentBindModal';
 import { useVisibleInterval } from '@/lib/use-visible-interval';
 
 function safeNum(v: unknown, fb = 0): number { const n = Number(v); return isFinite(n) ? n : fb; }
@@ -129,13 +130,17 @@ function FollowButton({
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [msg, setMsg] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [showBindModal, setShowBindModal] = useState(false);
+  // bind 완료 후 실행할 onboard 파라미터 저장
+  const pendingOnboard = useState<{ copyRatio: number; riskMode: RiskMode; maxPositionUsdc: number } | null>(null);
+  const [pendingArgs, setPendingArgs] = pendingOnboard;
   const { showToast } = useToast();
 
   // 이미 팔로우 중인 경우 done 상태로 동기화
   const effectivelyDone = state === 'done' || isFollowing;
 
-  const doFollow = async (copyRatio: number, riskMode: RiskMode, maxPositionUsdc: number) => {
-    setShowModal(false);
+  // bind 완료 후 onboard 실행 (AgentBindModal → onComplete 콜백)
+  const doFollowAfterBind = async (copyRatio: number, riskMode: RiskMode, maxPositionUsdc: number) => {
     setState('loading');
     setMsg('');
     try {
@@ -156,7 +161,6 @@ function FollowButton({
       });
       clearTimeout(timer);
 
-      // 503 / 5xx 전용 처리
       if (res.status === 503 || res.status >= 500) {
         const errMsg = 'Service temporarily unavailable. Retrying in 30s…';
         setMsg(errMsg);
@@ -168,7 +172,6 @@ function FollowButton({
 
       const data = await res.json();
       if (data.ok) {
-        // API 응답의 effective_copy_ratio 반영
         const effectivePct = data.effective_copy_ratio != null
           ? ` (ratio: ${(data.effective_copy_ratio * 100).toFixed(1)}%)`
           : '';
@@ -208,6 +211,49 @@ function FollowButton({
       showToast(msg, 'error');
       setTimeout(() => setState('idle'), 4000);
     }
+  };
+
+  const doFollow = async (copyRatio: number, riskMode: RiskMode, maxPositionUsdc: number) => {
+    setShowModal(false);
+
+    if (!walletAddress) {
+      await doFollowAfterBind(copyRatio, riskMode, maxPositionUsdc);
+      return;
+    }
+
+    // Agent Bind 체크: 서버 portfolio API에서 실제 agent_bound 상태 조회
+    // localStorage 캐시 우선, 없으면 서버 확인
+    const bindKey = `cp_agent_bound_${walletAddress}`;
+    let alreadyBound = false;
+    try {
+      const cached = typeof window !== 'undefined' ? localStorage.getItem(bindKey) : null;
+      if (cached === '1') {
+        alreadyBound = true;
+      } else {
+        // 서버에서 실제 agent_bound 확인
+        const res = await fetch(
+          `${API_URL}/followers/${walletAddress}/portfolio`,
+          { signal: AbortSignal.timeout(5000) }
+        ).catch(() => null);
+        if (res?.ok) {
+          const data = await res.json();
+          alreadyBound = data?.agent_bound === true;
+          if (alreadyBound) {
+            try { localStorage.setItem(bindKey, '1'); } catch { /* ignore */ }
+          }
+        }
+      }
+    } catch { /* 확인 실패 시 bind 모달 표시 */ }
+
+    if (!alreadyBound) {
+      // AgentBindModal 표시 → 완료 후 onboard
+      setPendingArgs({ copyRatio, riskMode, maxPositionUsdc });
+      setShowBindModal(true);
+      return;
+    }
+
+    // bind 완료 상태 — 바로 onboard
+    await doFollowAfterBind(copyRatio, riskMode, maxPositionUsdc);
   };
 
   const handleClick = () => {
@@ -271,6 +317,25 @@ function FollowButton({
           copyRatioPct={copyRatioPct}
           onConfirm={doFollow}
           onCancel={() => setShowModal(false)}
+        />
+      )}
+      {showBindModal && walletAddress && (
+        <AgentBindModal
+          walletAddress={walletAddress}
+          onSkip={() => {
+            setShowBindModal(false);
+            setPendingArgs(null);
+          }}
+          onComplete={() => {
+            // bind 완료: localStorage에 기록 후 onboard 실행
+            const key = `cp_agent_bound_${walletAddress}`;
+            try { localStorage.setItem(key, '1'); } catch { /* ignore */ }
+            setShowBindModal(false);
+            if (pendingArgs) {
+              doFollowAfterBind(pendingArgs.copyRatio, pendingArgs.riskMode, pendingArgs.maxPositionUsdc);
+              setPendingArgs(null);
+            }
+          }}
         />
       )}
       <div className="flex flex-col items-end gap-1">
@@ -516,7 +581,8 @@ export function RankedTraders() {
   const [allTraders, setAllTraders] = useState<CRSTrader[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
-  const [gradeFilter, setGradeFilter] = useState('B');
+  const [gradeFilter, setGradeFilter] = useState('A');
+  const userSelectedGrade = useRef(false); // 사용자가 직접 선택했으면 자동설정 하지 않음
   const [showDisqualified, setShowDisqualified] = useState(false);
   const [availableGrades, setAvailableGrades] = useState<Set<string>>(new Set());
   const [gradeCounts, setGradeCounts] = useState<Record<string, number>>({});
@@ -600,24 +666,29 @@ export function RankedTraders() {
       const grades = new Set(merged.map(t => t.grade));
       const counts: Record<string, number> = {};
       for (const t of merged) {
+        // showDisqualified 토글 여부에 관계없이 자격있는 트레이더 기준으로 카운트
         if (!t.disqualified) counts[t.grade] = (counts[t.grade] || 0) + 1;
+      }
+      // 자격있는 트레이더가 없는 등급이라도 disqualified 포함 시 버튼 활성화
+      if (showDisqualified) {
+        for (const t of merged) {
+          if (t.disqualified && !(counts[t.grade] && counts[t.grade] > 0)) {
+            counts[t.grade] = counts[t.grade] || 0; // 0으로 두어 비활성 유지 (disq만 있으면 count=0)
+          }
+        }
       }
       setAvailableGrades(grades);
       setGradeCounts(counts);
 
-      const GRADE_ORDER = ['S','A','B','C','D'];
-      const filterIdx = GRADE_ORDER.indexOf(gradeFilter);
-      const filtered = merged.filter(t => GRADE_ORDER.indexOf(t.grade) >= 0 && GRADE_ORDER.indexOf(t.grade) <= filterIdx);
-      setTraders(filtered);
       setFetchError(false);
       setUpdatedAt(Date.now());
+      // ⚠️ setTraders는 여기서 하지 않음 — gradeFilter useEffect가 담당
     } catch {
-      setTraders([]);
       setFetchError(true);
     } finally {
       setLoading(false);
     }
-  }, [gradeFilter, showDisqualified]);
+  }, [showDisqualified]);
 
   useEffect(() => {
     setLoading(true);
@@ -627,20 +698,19 @@ export function RankedTraders() {
   // 30초 폴링 (탭 활성 시에만)
   useVisibleInterval(fetchRanked, 30000);
 
-  // 데이터 로드 후 기본값을 가장 높은 등급으로 자동 설정
+  // 최초 1회만 — 가장 높은 등급으로 자동 설정 (사용자가 이미 선택했으면 skip)
   useEffect(() => {
     if (allTraders.length === 0) return;
+    if (userSelectedGrade.current) return; // 사용자 선택 후엔 덮어쓰지 않음
     const GRADE_ORDER = ['S','A','B','C','D'];
     const bestGrade = GRADE_ORDER.find(g => allTraders.some(t => t.grade === g && !t.disqualified));
     if (bestGrade) setGradeFilter(bestGrade);
   }, [allTraders]);
 
-  // 필터 변경 시 allTraders에서 재필터링
+  // 필터 변경 시 allTraders에서 재필터링 (exact match — B 클릭 시 B 등급만)
   useEffect(() => {
     if (allTraders.length === 0) return;
-    const GRADE_ORDER = ['S','A','B','C','D'];
-    const filterIdx = GRADE_ORDER.indexOf(gradeFilter);
-    const filtered = allTraders.filter(t => GRADE_ORDER.indexOf(t.grade) <= filterIdx);
+    const filtered = allTraders.filter(t => t.grade === gradeFilter);
     setTraders(filtered);
   }, [gradeFilter, allTraders]);
 
@@ -649,23 +719,23 @@ export function RankedTraders() {
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div className="flex items-center gap-2">
           {(['S','A','B','C']).map(g => {
-            const hasTraders = availableGrades.has(g);
             const count = gradeCounts[g] ?? 0;
+            const hasTraders = count > 0;
             return (
               <button
                 key={g}
-                onClick={() => setGradeFilter(g)}
+                onClick={() => { userSelectedGrade.current = true; setGradeFilter(g); }}
                 disabled={!hasTraders}
-                title={GRADE_DESC[g]}
+                title={hasTraders ? GRADE_DESC[g] : `No ${g}-grade traders available on ${typeof NETWORK !== 'undefined' ? NETWORK : 'testnet'} — lower grade filter to include more`}
                 className={`px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors border ${
                   gradeFilter === g
                     ? GRADE_COLORS[g]
                     : hasTraders
                       ? 'border-gray-700 text-gray-400 hover:text-gray-200'
-                      : 'border-gray-800 text-gray-700 cursor-not-allowed opacity-50'
+                      : 'border-gray-800 text-gray-700 cursor-not-allowed opacity-40'
                 }`}
               >
-                {g} {count > 0 ? `(${count})` : '(0)'}
+                {g} {count > 0 ? `(${count})` : '—'}
               </button>
             );
           })}

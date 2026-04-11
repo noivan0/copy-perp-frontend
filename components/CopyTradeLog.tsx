@@ -2,8 +2,10 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useSolanaWallet } from '@/lib/use-solana-wallet';
 import { useVisibleInterval } from '@/lib/use-visible-interval';
 import { API_URL } from '@/lib/config';
+import { AgentBindModal } from '@/components/AgentBindModal';
 import { formatPnl, formatPrice } from '@/lib/format';
 
 
@@ -65,6 +67,7 @@ interface Summary {
 /** 상태 배지 — 잔액 부족(skipped_insufficient) 포함 */
 function StatusBadge({ status, errorMsg }: { status: string; errorMsg?: string }) {
   const isInsufficient = status === 'skipped_insufficient';
+  const isAgentUnbound = status === 'skipped_agent_unbound';
   const isFailed = status === 'failed' || isInsufficient;
 
   let badgeClass = '';
@@ -78,6 +81,10 @@ function StatusBadge({ status, errorMsg }: { status: string; errorMsg?: string }
     badgeClass = 'bg-red-500/20 text-red-400';
     label = '⚠ Low Funds';
     tooltipText = tooltipText || 'Insufficient balance — trade was skipped. Please top up your account.';
+  } else if (isAgentUnbound) {
+    badgeClass = 'bg-yellow-500/20 text-yellow-400';
+    label = '🔑 Not Bound';
+    tooltipText = 'Agent not approved — approve copy trading in your portfolio settings';
   } else if (status === 'failed') {
     badgeClass = 'bg-red-500/20 text-red-400';
     label = '✗ Failed';
@@ -119,11 +126,14 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
   const [fetchError, setFetchError] = useState(false);
   const [serviceDown, setServiceDown] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const [showBindModal, setShowBindModal] = useState(false);
+  const { address: walletAddress } = useSolanaWallet();
 
   const relativeTime = useRelativeTime(updatedAt);
 
   const fetchTrades = useCallback(async () => {
-    const url = `${API_URL}/trades?limit=30${follower ? `&follower_address=${follower}` : ''}`;
+    const effectiveFollower = follower ?? walletAddress ?? undefined;
+    const url = `${API_URL}/trades?limit=30${effectiveFollower ? `&follower_address=${effectiveFollower}` : ''}`;
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 10000);
@@ -218,6 +228,34 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
             <div className="text-xs text-gray-500">USDC</div>
           </div>
         </div>
+      )}
+
+      {/* Agent Bind 필요 배너 */}
+      {trades.some(t => t.status === 'skipped_agent_unbound') && walletAddress && (
+        <div className="flex items-start gap-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-3">
+          <span className="text-yellow-400 text-lg shrink-0">🔑</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-yellow-400 text-sm font-medium">Agent Approval Required</p>
+            <p className="text-yellow-400/70 text-xs mt-0.5">
+              Copy trades are being skipped because agent binding is not complete. Approve once to enable copy trading.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowBindModal(true)}
+            className="shrink-0 text-xs bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 px-3 py-1.5 rounded-lg transition-colors font-medium"
+          >
+            Approve Now
+          </button>
+        </div>
+      )}
+
+      {/* Agent Bind Modal */}
+      {showBindModal && walletAddress && (
+        <AgentBindModal
+          walletAddress={walletAddress}
+          onComplete={() => setShowBindModal(false)}
+          onSkip={() => setShowBindModal(false)}
+        />
       )}
 
       {/* 잔액 부족 경고 배너 */}

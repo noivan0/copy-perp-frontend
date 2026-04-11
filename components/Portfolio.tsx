@@ -10,6 +10,7 @@ import { formatPnl, formatWinRate, formatAddr } from '@/lib/format';
 import { useToast } from '@/components/Toast';
 import { extractErrorMessage } from '@/lib/api';
 import { useVisibleInterval } from '@/lib/use-visible-interval';
+import { AgentBindModal } from '@/components/AgentBindModal';
 
 
 interface FollowerEntry {
@@ -137,6 +138,8 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
   const [unfollowing, setUnfollowing] = useState<string | null>(null);
   const [confirmUnfollow, setConfirmUnfollow] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [agentBound, setAgentBound] = useState<boolean | null>(null);
+  const [showBindModal, setShowBindModal] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   const lastStartupAt = useRef<number>(0);
   const { showToast } = useToast();
@@ -209,6 +212,22 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
         recentTrades: tradesRes.status === 'fulfilled' ? (tradesRes.value?.data ?? []) : [],
       });
       setUpdatedAt(Date.now());
+
+      // agent_bound 상태 확인 — 팔로우 중인데 미바인딩이면 모달 표시
+      if (followingData.length > 0) {
+        try {
+          const portfolioRes = await fetch(
+            `${API_URL}/followers/${walletAddress}/portfolio`,
+            { signal: ctrl.signal }
+          ).catch(() => null);
+          if (portfolioRes?.ok) {
+            const portfolioData = await portfolioRes.json();
+            const bound = portfolioData?.agent_bound === true;
+            setAgentBound(bound);
+            if (!bound) setShowBindModal(true);
+          }
+        } catch { /* agent_bound 조회 실패 — 무시 */ }
+      }
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') return; // unmount 또는 타임아웃 — 무시
       setError('Failed to load portfolio data');
@@ -293,7 +312,7 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
     setUnfollowing(traderAddress);
     try {
       const res = await fetch(
-        `${API_URL}/follow/${traderAddress}?follower_address=${walletAddress}`,
+        `${API_URL}/followers/${traderAddress}?follower_address=${walletAddress}`,
         { method: 'DELETE' }
       );
       if (res.ok) {
@@ -348,7 +367,13 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
               <h2 className="text-xl font-semibold text-white">My Portfolio</h2>
               <p className="text-xs text-gray-500 mt-0.5">Your PnL, followed traders &amp; recent copy trades</p>
             </div>
-            <span className="text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full">● 30s</span>
+            <span className="flex items-center gap-1.5 text-xs text-green-400 bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-full font-medium">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+              </span>
+              LIVE · 30s
+            </span>
           </div>
           {placeholder}
         </section>
@@ -500,8 +525,19 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
                 >
                   {/* 트레이더 정보 */}
                   <div className="min-w-0 flex-1">
-                    <div className="font-mono text-sm text-white truncate">
-                      {truncateAddress(f.trader_address, 8)}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="font-mono text-sm text-white truncate">
+                        {truncateAddress(f.trader_address, 8)}
+                      </div>
+                      {agentBound === false && (
+                        <button
+                          onClick={() => setShowBindModal(true)}
+                          className="text-xs px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/25 transition-colors"
+                          title="Agent binding required to activate copy trading"
+                        >
+                          ⚠ Binding required
+                        </button>
+                      )}
                     </div>
                     <div className="text-xs text-gray-500 mt-0.5">
                       Copy {((f.copy_ratio || 0) * 100).toFixed(0)}% ·
@@ -714,6 +750,18 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
         />
       )}
 
+      {/* Agent Bind 모달 — agent_bound=false이고 팔로우 중일 때 */}
+      {showBindModal && walletAddress && (
+        <AgentBindModal
+          walletAddress={walletAddress}
+          onComplete={() => {
+            setAgentBound(true);
+            setShowBindModal(false);
+          }}
+          onSkip={() => setShowBindModal(false)}
+        />
+      )}
+
       {sectionMode ? (
         <section>
           <div className="flex items-center justify-between mb-4">
@@ -721,7 +769,13 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
               <h2 className="text-xl font-semibold text-white">My Portfolio</h2>
               <p className="text-xs text-gray-500 mt-0.5">Your PnL, followed traders &amp; recent copy trades</p>
             </div>
-            <span className="text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full">● 30s</span>
+            <span className="flex items-center gap-1.5 text-xs text-green-400 bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-full font-medium">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+              </span>
+              LIVE · 30s
+            </span>
           </div>
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
             {content}
