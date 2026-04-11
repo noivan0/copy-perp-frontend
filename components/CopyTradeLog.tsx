@@ -140,6 +140,7 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
       setFetchError(false);
       setUpdatedAt(Date.now());
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return; // unmount/timeout — 무시
       const isUnavailable = err instanceof Error && err.message.startsWith('SERVICE_UNAVAILABLE');
       setFetchError(true);
       setServiceDown(isUnavailable);
