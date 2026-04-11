@@ -94,7 +94,7 @@ export function AgentBindModal({ walletAddress, onComplete, onSkip }: AgentBindM
           follower_address: walletAddress,
           signature,
           timestamp: data.timestamp,
-          expiry_window: data.expiry_window ?? 5000,
+          expiry_window: data.expiry_window ?? 60000,  // 60s fallback
           agent_wallet: data.agent_wallet,
         }),
       });

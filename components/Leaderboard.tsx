@@ -142,7 +142,7 @@ function FollowButton({
         }),
       });
       const data = await res.json();
-      if (data.ok) {
+      if (res.ok && data.ok) {
         setDone(true);
         showToast(`Now following ${formatAddr(trader.address)} 🎯`, 'success');
         // Portfolio 자동 갱신 트리거
@@ -339,7 +339,7 @@ export function Leaderboard() {
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 10000);
-      const res = await fetch(`${API_URL}/traders?limit=20`, { signal: ctrl.signal });
+      const res = await fetch(`${API_URL}/traders?limit=100`, { signal: ctrl.signal });
       clearTimeout(timer);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();

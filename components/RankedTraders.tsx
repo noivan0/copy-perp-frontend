@@ -707,10 +707,15 @@ export function RankedTraders() {
     if (bestGrade) setGradeFilter(bestGrade);
   }, [allTraders]);
 
-  // 필터 변경 시 allTraders에서 재필터링 (exact match — B 클릭 시 B 등급만)
+  // 필터 변경 시 allTraders에서 재필터링 (cumulative — B 클릭 시 S+A+B 모두 표시)
   useEffect(() => {
     if (allTraders.length === 0) return;
-    const filtered = allTraders.filter(t => t.grade === gradeFilter);
+    const GRADE_ORDER = ['S','A','B','C','D'];
+    const filterIdx = GRADE_ORDER.indexOf(gradeFilter);
+    const filtered = allTraders.filter(t => {
+      const idx = GRADE_ORDER.indexOf(t.grade);
+      return idx >= 0 && idx <= filterIdx;
+    });
     setTraders(filtered);
   }, [gradeFilter, allTraders]);
 

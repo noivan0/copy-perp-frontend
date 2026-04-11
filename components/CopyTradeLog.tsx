@@ -68,6 +68,8 @@ interface Summary {
 function StatusBadge({ status, errorMsg }: { status: string; errorMsg?: string }) {
   const isInsufficient = status === 'skipped_insufficient';
   const isAgentUnbound = status === 'skipped_agent_unbound';
+  const isNoKey = status === 'skipped_no_key';
+  const isOtherSkipped = status.startsWith('skipped_') && !isInsufficient && !isAgentUnbound && !isNoKey;
   const isFailed = status === 'failed' || isInsufficient;
 
   let badgeClass = '';
@@ -82,9 +84,17 @@ function StatusBadge({ status, errorMsg }: { status: string; errorMsg?: string }
     label = '⚠ Low Funds';
     tooltipText = tooltipText || 'Insufficient balance — trade was skipped. Please top up your account.';
   } else if (isAgentUnbound) {
-    badgeClass = 'bg-yellow-500/20 text-yellow-400';
+    badgeClass = 'bg-orange-500/20 text-orange-400';
     label = '🔑 Not Bound';
     tooltipText = 'Agent not approved — approve copy trading in your portfolio settings';
+  } else if (isNoKey) {
+    badgeClass = 'bg-gray-500/20 text-gray-400';
+    label = '🔒 No Key';
+    tooltipText = tooltipText || 'Agent key not configured';
+  } else if (isOtherSkipped) {
+    badgeClass = 'bg-yellow-500/20 text-yellow-400';
+    label = '⏭ Skipped';
+    tooltipText = tooltipText || status;
   } else if (status === 'failed') {
     badgeClass = 'bg-red-500/20 text-red-400';
     label = '✗ Failed';
@@ -296,7 +306,8 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
                 const pnlVal = safeNum(t.realized_pnl ?? t.pnl);
                 const hasPnl = (t.realized_pnl ?? t.pnl) != null;
                 const isInsufficient = t.status === 'skipped_insufficient';
-                const isFailed = t.status === 'failed' || isInsufficient;
+                const isAgentUnboundRow = t.status === 'skipped_agent_unbound';
+                const isFailed = t.status === 'failed' || isInsufficient || isAgentUnboundRow;
                 return (
                   <tr
                     key={t.id}

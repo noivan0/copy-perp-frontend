@@ -99,7 +99,7 @@ function UnfollowConfirmDialog({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
         <div className="text-2xl mb-3 text-center">⚠️</div>
         <h3 className="text-white font-semibold text-center mb-2">Unfollow Trader?</h3>
         <p className="text-gray-400 text-sm text-center mb-2">
@@ -142,6 +142,7 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
   const [showBindModal, setShowBindModal] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   const lastStartupAt = useRef<number>(0);
+  const autoReOnboardDone = useRef(false); // 자동 재등록 1회 방어
   const { showToast } = useToast();
   const relativeTime = useRelativeTime(updatedAt);
 
@@ -176,8 +177,8 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
 
       const followingData = followingRes.status === 'fulfilled' ? (followingRes.value?.data ?? []) : [];
 
-      // DB 리셋 감지: DB에 following 없는데 localStorage 캐시 있으면 자동 재등록
-      if (followingData.length === 0 && typeof window !== 'undefined') {
+      // DB 리셋 감지: DB에 following 없는데 localStorage 캐시 있으면 자동 재등록 (1회만)
+      if (followingData.length === 0 && typeof window !== 'undefined' && !autoReOnboardDone.current) {
         const cached = typeof window !== 'undefined'
           ? localStorage.getItem(`cp_following_${walletAddress}`)
           : null;
@@ -197,9 +198,9 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
                   strategy: 'safe',
                 }),
               }).then(() => {
-                // 재등록 후 500ms 후 다시 조회
+                autoReOnboardDone.current = true; // 무한루프 방어
                 setTimeout(() => fetchData(), 500);
-              }).catch(() => {});
+              }).catch(() => { autoReOnboardDone.current = true; });
             }
           } catch { /* ignore */ }
         }
@@ -389,17 +390,38 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
 
   /* ── 지갑 로딩 중 (임베디드 지갑 생성 대기) ── */
   if (walletLoading) {
-    return (
+    const walletLoadingContent = (
       <div className="flex flex-col items-center justify-center py-10 gap-3 text-gray-500">
         <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
         <p className="text-sm">Creating your Solana wallet…</p>
       </div>
     );
+    if (sectionMode) {
+      return (
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-semibold text-white">My Portfolio</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Your PnL, followed traders &amp; recent copy trades</p>
+            </div>
+            <span className="flex items-center gap-1.5 text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full font-medium">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500" />
+              </span>
+              LIVE · 30s
+            </span>
+          </div>
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">{walletLoadingContent}</div>
+        </section>
+      );
+    }
+    return walletLoadingContent;
   }
 
   /* ── 지갑 타임아웃 (30초 초과) ── */
   if (walletTimedOut) {
-    return (
+    const timedOutContent = (
       <div className="text-center py-10 text-yellow-400/80">
         <div className="text-3xl mb-3">⚠️</div>
         <p className="text-sm font-medium mb-1">Wallet creation timed out</p>
@@ -412,20 +434,62 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
         </button>
       </div>
     );
+    if (sectionMode) {
+      return (
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-semibold text-white">My Portfolio</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Your PnL, followed traders &amp; recent copy trades</p>
+            </div>
+            <span className="flex items-center gap-1.5 text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full font-medium">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500" />
+              </span>
+              LIVE · 30s
+            </span>
+          </div>
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">{timedOutContent}</div>
+        </section>
+      );
+    }
+    return timedOutContent;
   }
 
   /* ── 데이터 로딩 ── */
   if (loading && !state) {
-    return (
+    const loadingContent = (
       <div className="flex justify-center py-10">
         <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
       </div>
     );
+    if (sectionMode) {
+      return (
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-semibold text-white">My Portfolio</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Your PnL, followed traders &amp; recent copy trades</p>
+            </div>
+            <span className="flex items-center gap-1.5 text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full font-medium">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500" />
+              </span>
+              LIVE · 30s
+            </span>
+          </div>
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">{loadingContent}</div>
+        </section>
+      );
+    }
+    return loadingContent;
   }
 
   /* ── 에러 ── */
   if (error || !state) {
-    return (
+    const errorContent = (
       <div className="text-center py-10 text-gray-500">
         <p className="text-sm">{error ?? 'No portfolio data available'}</p>
         <button
@@ -436,6 +500,27 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
         </button>
       </div>
     );
+    if (sectionMode) {
+      return (
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-semibold text-white">My Portfolio</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Your PnL, followed traders &amp; recent copy trades</p>
+            </div>
+            <span className="flex items-center gap-1.5 text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full font-medium">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500" />
+              </span>
+              LIVE · 30s
+            </span>
+          </div>
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">{errorContent}</div>
+        </section>
+      );
+    }
+    return errorContent;
   }
 
   const { following, pnlSummary, byTrader, recentTrades } = state;
