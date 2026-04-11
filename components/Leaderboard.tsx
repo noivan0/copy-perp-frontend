@@ -21,6 +21,7 @@ interface Trader {
   pnl_30d: number;
   is_recommended?: boolean;
   active: number | boolean;
+  composite_score?: number;
 }
 
 // Recommended: use API is_recommended field instead of hardcoded addresses
@@ -244,8 +245,9 @@ export function Leaderboard() {
             const roi30 = safeNum(trader.roi_30d);
             const roi7  = safeNum(trader.roi_7d);
             const wr    = safeNum(trader.win_rate);
+            const wrDisplay = trader.win_rate > 0 ? `${(wr * 100).toFixed(0)}%` : '—';
             const pf    = safeNum(trader.profit_factor);
-            const score = safeNum(trader.score);
+            const score = safeNum(trader.composite_score ?? trader.score);
             const pnl30 = safeNum(trader.pnl_30d);
 
             return (
@@ -281,13 +283,13 @@ export function Leaderboard() {
                   {roi7 >= 0 ? '+' : ''}{roi7.toFixed(1)}%
                 </td>
                 <td className="py-3 px-4 text-right text-sm text-gray-300 hidden lg:table-cell">
-                  {wr.toFixed(0)}%
+                  {wrDisplay}
                 </td>
                 <td className="py-3 px-4 text-right text-sm text-gray-300 hidden lg:table-cell">
                   {pf > 0 ? `${pf.toFixed(1)}x` : '—'}
                 </td>
                 <td className="py-3 px-4 text-right text-sm text-indigo-300 hidden xl:table-cell font-mono">
-                  {score.toFixed(0)}
+                  {score > 0 ? score.toFixed(0) : '—'}
                 </td>
                 <td className={`py-3 px-4 text-right font-mono text-sm ${pnl30 >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   {pnl30 >= 0 ? '+' : ''}${pnl30.toLocaleString(undefined, {maximumFractionDigits: 0})}

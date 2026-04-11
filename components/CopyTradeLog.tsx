@@ -119,7 +119,7 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
       {trades.length === 0 ? (
         <div className="text-center py-10 text-gray-500 text-sm">
           <div className="text-3xl mb-2">📋</div>
-          No copy trades yet. Follow a trader to get started.
+          No copy trades yet. Follow a trader from the CRS Leaderboard above to start copying.
         </div>
       ) : (
         <div className="overflow-x-auto">

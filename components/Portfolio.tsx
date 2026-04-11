@@ -202,6 +202,15 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
         { method: 'DELETE' }
       );
       if (res.ok) {
+        // localStorage 캐시에서도 제거
+        if (typeof window !== 'undefined' && walletAddress) {
+          try {
+            const key = `cp_following_${walletAddress}`;
+            const cached: string[] = JSON.parse(localStorage.getItem(key) || '[]');
+            const updated = cached.filter(a => a !== traderAddress);
+            localStorage.setItem(key, JSON.stringify(updated));
+          } catch { /* ignore */ }
+        }
         // 로컬 상태에서 즉시 제거
         setState(prev =>
           prev
