@@ -6,7 +6,7 @@ import { useVisibleInterval } from '@/lib/use-visible-interval';
 import { usePrivy } from '@privy-io/react-auth';
 import { useSolanaWallet } from '@/lib/use-solana-wallet';
 import { API_URL, DEFAULT_COPY_RATIO, DEFAULT_MAX_POSITION_USDC } from '@/lib/config';
-import { formatPct, formatAddr } from '@/lib/format';
+import { formatPct, formatAddr, formatPnl } from '@/lib/format';
 import { useToast } from '@/components/Toast';
 
 function safeNum(v: unknown, fb = 0): number { const n = Number(v); return isFinite(n) ? n : fb; }
@@ -314,7 +314,7 @@ export function Leaderboard() {
                   {score > 0 ? score.toFixed(0) : '—'}
                 </td>
                 <td className={`py-3 px-4 text-right font-mono text-sm ${pnl30 >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {pnl30 !== 0 ? `${pnl30 >= 0 ? '+' : ''}$${Math.abs(pnl30).toLocaleString('en-US', {maximumFractionDigits: 0})}` : '—'}
+                  {pnl30 !== 0 ? formatPnl(pnl30) : '—'}
                 </td>
                 <td className="py-3 px-4 text-center">
                   <FollowButton

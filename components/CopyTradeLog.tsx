@@ -1,9 +1,10 @@
-/* v6 — useVisibleInterval 실제 호출, follower 변경 시 상태 초기화 */
+/* v7 — format.ts 통합, 모바일 테이블 min-w 추가 */
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { useVisibleInterval } from '@/lib/use-visible-interval';
 import { API_URL } from '@/lib/config';
+import { formatPnl, formatPrice } from '@/lib/format';
 
 
 function safeNum(v: unknown, fb = 0): number {
@@ -118,7 +119,7 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
           <div className="bg-gray-800/50 rounded-lg p-3 text-center">
             <div className="text-xs text-gray-400 mb-1">Total PnL</div>
             <div className={`text-xl font-bold ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {totalPnl >= 0 ? '+' : ''}{totalPnl.toFixed(2)}
+              {formatPnl(totalPnl)}
             </div>
             <div className="text-xs text-gray-500">USDC</div>
           </div>
@@ -131,8 +132,8 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
           No copy trades yet. Follow a trader from the CRS Leaderboard above to start copying.
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+          <table className="w-full min-w-[600px] text-xs">
             <thead>
               <tr className="text-gray-500 border-b border-gray-800 text-xs uppercase tracking-wide">
                 <th className="text-left py-2 px-3">Time</th>
@@ -167,7 +168,7 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
                     </td>
                     <td className="py-2 px-3 text-right font-mono text-gray-300">{t.amount}</td>
                     <td className="py-2 px-3 text-right font-mono text-gray-300">
-                      ${safeNum(t.exec_price ?? parseFloat(t.price || '0')).toLocaleString(undefined, {maximumFractionDigits: 4})}
+                      {formatPrice(safeNum(t.exec_price ?? parseFloat(t.price || '0')))}
                     </td>
                     <td className="py-2 px-3 text-center">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -184,7 +185,7 @@ export function CopyTradeLog({ follower }: { follower?: string }) {
                       !hasPnl ? 'text-gray-600' :
                       pnlVal >= 0 ? 'text-green-400' : 'text-red-400'
                     }`}>
-                      {hasPnl ? `${pnlVal >= 0 ? '+' : ''}$${Math.abs(pnlVal).toFixed(2)}` : '—'}
+                      {hasPnl ? formatPnl(pnlVal) : '—'}
                     </td>
                   </tr>
                 );

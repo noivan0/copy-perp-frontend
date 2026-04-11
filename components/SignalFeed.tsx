@@ -1,9 +1,10 @@
-/* v2 */
+/* v3 — format.ts 통합 */
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { useVisibleInterval } from '@/lib/use-visible-interval';
 import { API_URL } from '@/lib/config';
+import { formatPrice, formatPct } from '@/lib/format';
 
 
 interface MarketSignal {
@@ -72,13 +73,13 @@ export function SignalFeed() {
                 <div key={f.symbol} className="flex justify-between items-center">
                   <span className="text-white text-sm font-medium w-20">{f.symbol}</span>
                   <div className="flex items-center gap-3">
-                    <span className="text-gray-400 text-xs">${mark.toFixed(4)}</span>
+                    <span className="text-gray-400 text-xs">{formatPrice(mark)}</span>
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
                       isHigh ? 'bg-red-500/20 text-red-400' :
                       isLow ? 'bg-emerald-500/20 text-emerald-400' :
                       'bg-gray-700 text-gray-400'
                     }`}>
-                      {rate >= 0 ? '+' : ''}{(rate * 100).toFixed(4)}%
+                      {formatPct(rate * 100, 4)}
                     </span>
                   </div>
                 </div>
@@ -116,9 +117,9 @@ export function SignalFeed() {
                 <div key={d.symbol} className="flex justify-between items-center">
                   <span className="text-white text-sm font-medium w-20">{d.symbol}</span>
                   <div className="flex items-center gap-3">
-                    <span className="text-gray-400 text-xs">Mark ${mark.toFixed(4)}</span>
+                    <span className="text-gray-400 text-xs">Mark {formatPrice(mark)}</span>
                     <span className={`text-xs font-semibold ${divPct >= 0 ? 'text-amber-400' : 'text-blue-400'}`}>
-                      {divPct >= 0 ? '+' : ''}{divPct.toFixed(3)}%
+                      {formatPct(divPct, 3)}
                     </span>
                   </div>
                 </div>

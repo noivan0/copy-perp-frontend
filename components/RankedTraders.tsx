@@ -285,9 +285,9 @@ function TraderCard({ trader, rank, authenticated, walletAddress, walletLoading,
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-px bg-gray-800 border-t border-gray-800">
+      <div className="grid grid-cols-4 gap-px bg-gray-800 border-t border-gray-800">
         <div className="bg-gray-900 p-3 text-center">
-          <div className={`text-lg font-bold ${roi30 >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+          <div className={`text-base font-bold ${roi30 >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {formatPct(roi30)}
           </div>
           <div className="text-xs text-gray-500">30d ROI</div>
@@ -295,14 +295,14 @@ function TraderCard({ trader, rank, authenticated, walletAddress, walletLoading,
         <div className="bg-gray-900 p-3 text-center">
           {trader.trade_stats?.win_rate != null ? (
             <>
-              <div className={`text-lg font-bold ${safeNum(trader.trade_stats.win_rate) >= 50 ? 'text-green-400' : 'text-yellow-400'}`}>
+              <div className={`text-base font-bold ${safeNum(trader.trade_stats.win_rate) >= 50 ? 'text-green-400' : 'text-yellow-400'}`}>
                 {safeNum(trader.trade_stats.win_rate).toFixed(0)}%
               </div>
               <div className="text-xs text-gray-500">Win Rate</div>
             </>
           ) : (
             <>
-              <div className={`text-lg font-bold ${pnl30 >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              <div className={`text-base font-bold ${pnl30 >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {formatUSDC(pnl30, 0)}
               </div>
               <div className="text-xs text-gray-500">30d PnL</div>
@@ -310,10 +310,16 @@ function TraderCard({ trader, rank, authenticated, walletAddress, walletLoading,
           )}
         </div>
         <div className="bg-gray-900 p-3 text-center">
-          <div className="text-lg font-bold text-indigo-300">
+          <div className="text-base font-bold text-gray-300">
+            {trader.trade_stats?.trade_count != null ? trader.trade_stats.trade_count : '—'}
+          </div>
+          <div className="text-xs text-gray-500">Trades</div>
+        </div>
+        <div className="bg-gray-900 p-3 text-center">
+          <div className="text-base font-bold text-indigo-300">
             {trader.copy_ratio_pct}%
           </div>
-          <div className="text-xs text-gray-500">Suggested Ratio</div>
+          <div className="text-xs text-gray-500">Copy Ratio</div>
         </div>
       </div>
 
@@ -368,7 +374,25 @@ function TraderCard({ trader, rank, authenticated, walletAddress, walletLoading,
             </div>
             <div className="bg-gray-800 rounded-lg p-2">
               <div className="text-gray-500">Consistency</div>
-              <div className="text-white font-mono">{trader.raw.consistency ?? '—'}</div>
+              <div className="text-white font-mono">{trader.raw.consistency != null ? String(trader.raw.consistency) : '—'}</div>
+            </div>
+            <div className="bg-gray-800 rounded-lg p-2">
+              <div className="text-gray-500">Trade Count</div>
+              <div className="text-white font-mono">
+                {trader.trade_stats?.trade_count != null ? trader.trade_stats.trade_count : '—'}
+              </div>
+            </div>
+            <div className="bg-gray-800 rounded-lg p-2">
+              <div className="text-gray-500">Win Rate</div>
+              <div className={`font-mono ${
+                trader.trade_stats?.win_rate != null
+                  ? (safeNum(trader.trade_stats.win_rate) >= 50 ? 'text-green-400' : 'text-yellow-400')
+                  : 'text-white'
+              }`}>
+                {trader.trade_stats?.win_rate != null
+                  ? `${safeNum(trader.trade_stats.win_rate).toFixed(0)}%`
+                  : '—'}
+              </div>
             </div>
           </div>
 
