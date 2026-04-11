@@ -421,14 +421,20 @@ export function RankedTraders() {
 
   const fetchRanked = useCallback(async () => {
     try {
-      const [rankedRes, tradersRes] = await Promise.all([
+      // Promise.allSettled: /traders가 실패해도 /traders/ranked는 표시 (graceful degradation)
+      const [rankedResult, tradersResult] = await Promise.allSettled([
         fetch(`${API_URL}/traders/ranked?limit=100&min_grade=C&exclude_disqualified=${!showDisqualified}`),
         fetch(`${API_URL}/traders?limit=100`),
       ]);
-      if (!rankedRes.ok) throw new Error(`/traders/ranked HTTP ${rankedRes.status}`);
-      if (!tradersRes.ok) throw new Error(`/traders HTTP ${tradersRes.status}`);
-      const rankedData = await rankedRes.json();
-      const tradersData = await tradersRes.json();
+      if (rankedResult.status === 'rejected' || !rankedResult.value.ok) {
+        throw new Error(`/traders/ranked 오류: ${rankedResult.status === 'rejected' ? rankedResult.reason : rankedResult.value.status}`);
+      }
+      const rankedData = await rankedResult.value.json();
+      // /traders 실패해도 ranked는 표시 (roi_30d는 raw에서 fallback)
+      let tradersData: { data?: { address: string; roi_30d?: number }[] } = { data: [] };
+      if (tradersResult.status === 'fulfilled' && tradersResult.value.ok) {
+        tradersData = await tradersResult.value.json();
+      }
 
       const roiMap: Record<string, number> = {};
       for (const t of (tradersData.data || [])) {
