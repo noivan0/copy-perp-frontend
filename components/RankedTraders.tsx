@@ -151,7 +151,7 @@ function FollowButton({
           copy_ratio: copyRatio,
           max_position_usdc: maxPositionUsdc,
           risk_mode: riskMode,
-          strategy: riskMode === 'conservative' ? 'safe' : riskMode === 'aggressive' ? 'growth' : 'safe',
+          strategy: riskMode === 'conservative' ? 'safe' : riskMode === 'aggressive' ? 'aggressive' : 'balanced',
         }),
       });
       clearTimeout(timer);

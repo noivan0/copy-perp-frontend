@@ -58,11 +58,39 @@ export default function Home() {
             Follow the best performers and automatically mirror their positions.
             Fully on-chain, non-custodial, powered by Builder Code.
           </p>
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <a
+              href="#crs-leaderboard"
+              className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm px-5 py-3 rounded-xl transition-colors"
+            >
+              🚀 Start Copy Trading
+            </a>
+            <a
+              href="#full-leaderboard"
+              className="inline-flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium text-sm px-5 py-3 rounded-xl border border-gray-700 transition-colors"
+            >
+              📊 View All Traders
+            </a>
+          </div>
           <div className="flex items-center justify-center flex-wrap gap-4 md:gap-6 text-sm text-gray-500">
             <span className="flex items-center gap-1.5">🔐 Non-custodial</span>
             <span className="flex items-center gap-1.5">⚡ &lt;600ms latency</span>
             <span className="flex items-center gap-1.5">💰 0.1% builder fee</span>
             <span className="flex items-center gap-1.5">🎁 Fuul rewards</span>
+          </div>
+          <div className="flex items-center justify-center gap-3 mt-6 flex-wrap">
+            <a
+              href="#crs-leaderboard"
+              className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-xl transition-colors text-sm shadow-lg shadow-indigo-500/20"
+            >
+              ⚡ Start Copy Trading
+            </a>
+            <a
+              href="#full-leaderboard"
+              className="inline-flex items-center gap-2 bg-gray-800 hover:bg-gray-700 active:bg-gray-900 text-gray-200 font-semibold px-6 py-3 rounded-xl transition-colors text-sm border border-gray-700"
+            >
+              📊 View All Traders
+            </a>
           </div>
         </section>
 
@@ -107,7 +135,7 @@ export default function Home() {
         </section>
 
         {/* CRS Ranked Traders */}
-        <section>
+        <section id="crs-leaderboard" className="scroll-mt-20">
           <div className="flex items-center justify-between mb-2">
             <div>
               <h2 className="text-xl font-semibold text-white">CRS Leaderboard</h2>
@@ -134,8 +162,8 @@ export default function Home() {
         </ErrorBoundary>
 
         {/* Full Leaderboard */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
+        <section id="full-leaderboard">
+          <div className="flex items-center justify-between mb-4 scroll-mt-20">
             <div>
               <h2 className="text-xl font-semibold text-white">Full Leaderboard</h2>
               <p className="text-xs text-gray-500 mt-0.5">All active traders sorted by 30d PnL</p>
