@@ -310,7 +310,8 @@ export function Leaderboard() {
       setTraders((data.data || []).filter((t: Trader) => Boolean(t.active)));
       setFetchError(false);
       setUpdatedAt(Date.now());
-    } catch {
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return; // unmount/timeout — 무시
       setFetchError(true);
     } finally {
       setLoading(false);
@@ -319,6 +320,13 @@ export function Leaderboard() {
 
   useEffect(() => { fetchTraders(); }, [fetchTraders]);
   useVisibleInterval(fetchTraders, 30000);
+
+  // 네트워크 재연결 시 즉시 갱신
+  useEffect(() => {
+    const handler = () => fetchTraders();
+    window.addEventListener('network:reconnected', handler);
+    return () => window.removeEventListener('network:reconnected', handler);
+  }, [fetchTraders]);
 
   const handleLoginNeeded = () => {
     if (login) login();

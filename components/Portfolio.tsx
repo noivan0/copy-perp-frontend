@@ -208,6 +208,7 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
       });
       setUpdatedAt(Date.now());
     } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return; // unmount 또는 타임아웃 — 무시
       setError('Failed to load portfolio data');
     } finally {
       setLoading(false);
@@ -232,6 +233,13 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
     const handler = () => fetchData();
     window.addEventListener('portfolio:refresh', handler);
     return () => window.removeEventListener('portfolio:refresh', handler);
+  }, [fetchData]);
+
+  // 네트워크 재연결 시 자동 갱신
+  useEffect(() => {
+    const handler = () => fetchData();
+    window.addEventListener('network:reconnected', handler);
+    return () => window.removeEventListener('network:reconnected', handler);
   }, [fetchData]);
 
   // 서버 재시작(DB 리셋) 감지 → localStorage 팔로워 자동 재등록

@@ -89,8 +89,9 @@ export function SignalFeed() {
         setHasError(false);
         setIsLoading(false);
       })
-      .catch(() => {
+      .catch((err) => {
         clearTimeout(timer);
+        if (err instanceof DOMException && err.name === 'AbortError') return; // unmount/timeout — 무시
         setHasError(true);
         setIsLoading(false);
       });
@@ -98,6 +99,13 @@ export function SignalFeed() {
 
   useEffect(() => { fetchSignals(); }, [fetchSignals]);
   useVisibleInterval(fetchSignals, 5000);
+
+  // 네트워크 재연결 시 즉시 갱신
+  useEffect(() => {
+    const handler = () => fetchSignals();
+    window.addEventListener('network:reconnected', handler);
+    return () => window.removeEventListener('network:reconnected', handler);
+  }, [fetchSignals]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
