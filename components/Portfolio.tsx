@@ -5,6 +5,8 @@ import { useSolanaWallet } from '@/lib/use-solana-wallet';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { getSolanaAddress, truncateAddress } from '@/lib/privy-helpers';
 import { API_URL, DEFAULT_COPY_RATIO, DEFAULT_MAX_POSITION_USDC } from '@/lib/config';
+import { formatPnl, formatWinRate, formatAddr } from '@/lib/format';
+import { useToast } from '@/components/Toast';
 
 
 interface FollowerEntry {
@@ -56,8 +58,9 @@ function safeNum(v: unknown, fb = 0): number {
   return isFinite(n) ? n : fb;
 }
 
+/** @deprecated use formatPnl from lib/format */
 function fmtPnl(pnl: number): string {
-  return `${pnl >= 0 ? '+' : ''}$${Math.abs(pnl).toFixed(2)}`;
+  return formatPnl(pnl);
 }
 
 export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
@@ -68,6 +71,7 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
   const [unfollowing, setUnfollowing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const lastStartupAt = useRef<number>(0);
+  const { showToast } = useToast();
 
   
 
@@ -202,6 +206,7 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
         { method: 'DELETE' }
       );
       if (res.ok) {
+        showToast(`Unfollowed ${formatAddr(traderAddress)}`, 'info');
         // localStorage 캐시에서도 제거
         if (typeof window !== 'undefined' && walletAddress) {
           try {
@@ -217,9 +222,11 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
             ? { ...prev, following: prev.following.filter(f => f.trader_address !== traderAddress) }
             : prev
         );
+      } else {
+        showToast('Unfollow failed — try again', 'error');
       }
     } catch {
-      // 실패 시 조용히 처리
+      showToast('Network error — try again', 'error');
     } finally {
       setUnfollowing(null);
     }
@@ -299,7 +306,7 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
           },
           {
             label: 'Win Rate (30d)',
-            value: `${winRate.toFixed(1)}%`,
+            value: `${winRate.toFixed(1)}%`,  // winRate는 이미 *100 적용된 값
             color: winRate >= 50 ? 'text-green-400' : 'text-red-400',
           },
           {
@@ -377,7 +384,7 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
                           {fmtPnl(traderPnl)}
                         </div>
                         <div className="text-xs text-gray-600">
-                          {(safeNum(perf.win_rate) * 100).toFixed(0)}% win
+                          {formatWinRate(safeNum(perf.win_rate), 0)} win
                         </div>
                       </div>
                     ) : (

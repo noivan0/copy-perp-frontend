@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Providers } from './providers';
+import { ToastProvider } from '@/components/Toast';
 
 export const metadata: Metadata = {
   title: 'Copy Perp — Decentralized Copy Trading on Pacifica',
@@ -28,7 +29,9 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className="font-sans bg-gray-950 text-white min-h-screen">
         <Providers>
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </Providers>
       </body>
     </html>

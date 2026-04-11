@@ -1,10 +1,12 @@
-/* v4 */
+/* v5 — format helpers, toast notifications */
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { useSolanaWallet } from '@/lib/use-solana-wallet';
 import { API_URL, DEFAULT_COPY_RATIO, DEFAULT_MAX_POSITION_USDC } from '@/lib/config';
+import { formatPct, formatUSDC, formatAddr } from '@/lib/format';
+import { useToast } from '@/components/Toast';
 
 function safeNum(v: unknown, fb = 0): number { const n = Number(v); return isFinite(n) ? n : fb; }
 
@@ -97,6 +99,7 @@ function FollowButton({
 }) {
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [msg, setMsg] = useState('');
+  const { showToast } = useToast();
 
   const handleClick = async () => {
     if (!authenticated) { onLoginNeeded(); return; }
@@ -129,6 +132,7 @@ function FollowButton({
       const data = await res.json();
       if (data.ok) {
         setState('done');
+        showToast(`Now following ${formatAddr(traderAddr)} 🎯`, 'success');
         // Portfolio 자동 갱신 트리거
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('followSuccess'));
@@ -152,11 +156,13 @@ function FollowButton({
             || 'Follow failed — please try again';
         setMsg(errDetail);
         setState('error');
+        showToast(errDetail, 'error');
         setTimeout(() => setState('idle'), 4000);
       }
     } catch {
       setMsg('Network error — try again');
       setState('error');
+      showToast('Network error — try again', 'error');
       setTimeout(() => setState('idle'), 4000);
     }
   };
@@ -282,7 +288,7 @@ function TraderCard({ trader, rank, authenticated, walletAddress, walletLoading,
       <div className="grid grid-cols-3 gap-px bg-gray-800 border-t border-gray-800">
         <div className="bg-gray-900 p-3 text-center">
           <div className={`text-lg font-bold ${roi30 >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {roi30 >= 0 ? '+' : ''}{roi30.toFixed(1)}%
+            {formatPct(roi30)}
           </div>
           <div className="text-xs text-gray-500">30d ROI</div>
         </div>
@@ -297,7 +303,7 @@ function TraderCard({ trader, rank, authenticated, walletAddress, walletLoading,
           ) : (
             <>
               <div className={`text-lg font-bold ${pnl30 >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {pnl30 >= 0 ? '+$' : '-$'}{Math.abs(pnl30).toLocaleString(undefined, {maximumFractionDigits: 0})}
+                {formatUSDC(pnl30, 0)}
               </div>
               <div className="text-xs text-gray-500">30d PnL</div>
             </>
@@ -358,7 +364,7 @@ function TraderCard({ trader, rank, authenticated, walletAddress, walletLoading,
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="bg-gray-800 rounded-lg p-2">
               <div className="text-gray-500">Equity</div>
-              <div className="text-white font-mono">${equity.toLocaleString(undefined, {maximumFractionDigits: 0})}</div>
+              <div className="text-white font-mono">{equity > 0 ? `$${equity.toLocaleString('en-US', {maximumFractionDigits: 0})}` : '—'}</div>
             </div>
             <div className="bg-gray-800 rounded-lg p-2">
               <div className="text-gray-500">Consistency</div>

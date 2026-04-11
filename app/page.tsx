@@ -5,6 +5,7 @@ import { CopyTradeLog } from '@/components/CopyTradeLog';
 import { Portfolio } from '@/components/Portfolio';
 import { ReferralBanner, RefCodeNotice } from '@/components/ReferralBanner';
 import { RankedTraders } from '@/components/RankedTraders';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export default function Home() {
   return (
@@ -27,10 +28,14 @@ export default function Home() {
 
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-10">
         {/* Referral code notice */}
-        <RefCodeNotice />
+        <ErrorBoundary name="RefCodeNotice">
+          <RefCodeNotice />
+        </ErrorBoundary>
 
         {/* Referral banner (post-login) */}
-        <ReferralBanner />
+        <ErrorBoundary name="ReferralBanner">
+          <ReferralBanner />
+        </ErrorBoundary>
 
         {/* Hero */}
         <section className="text-center py-6 md:py-10">
@@ -89,7 +94,9 @@ export default function Home() {
               LIVE · 5s
             </span>
           </div>
-          <SignalFeed />
+          <ErrorBoundary name="SignalFeed">
+            <SignalFeed />
+          </ErrorBoundary>
         </section>
 
         {/* CRS Ranked Traders */}
@@ -109,11 +116,15 @@ export default function Home() {
               LIVE · 60s
             </span>
           </div>
-          <RankedTraders />
+          <ErrorBoundary name="RankedTraders">
+            <RankedTraders />
+          </ErrorBoundary>
         </section>
 
         {/* My Portfolio — 로그인 시만 노출 (Portfolio 내부에서 null 반환) */}
-        <Portfolio sectionMode />
+        <ErrorBoundary name="Portfolio">
+          <Portfolio sectionMode />
+        </ErrorBoundary>
 
         {/* Full Leaderboard */}
         <section>
@@ -131,7 +142,9 @@ export default function Home() {
             </span>
           </div>
           <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-            <Leaderboard />
+            <ErrorBoundary name="Leaderboard">
+              <Leaderboard />
+            </ErrorBoundary>
           </div>
         </section>
 
@@ -151,7 +164,9 @@ export default function Home() {
             </span>
           </div>
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-            <CopyTradeLog />
+            <ErrorBoundary name="CopyTradeLog">
+              <CopyTradeLog />
+            </ErrorBoundary>
           </div>
         </section>
       </div>
