@@ -162,7 +162,7 @@ export default function Home() {
         </ErrorBoundary>
 
         {/* Full Leaderboard */}
-        <section id="full-leaderboard">
+        <section id="full-leaderboard" className="scroll-mt-20">
           <div className="flex items-center justify-between mb-4 scroll-mt-20">
             <div>
               <h2 className="text-xl font-semibold text-white">Full Leaderboard</h2>
