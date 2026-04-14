@@ -147,7 +147,7 @@ function FollowButton({
       if (accessToken) authHeaders['X-Privy-Token'] = accessToken;
 
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 20000);  // Render 콜드스타트 대응
+      const timer = setTimeout(() => ctrl.abort(), 45000);  // Render 콜드스타트 대응 (최대 45초)
       const res = await fetch(`${API_URL}/followers/onboard`, {
         method: 'POST',
         headers: authHeaders,
@@ -583,7 +583,7 @@ export function RankedTraders() {
   const fetchRanked = useCallback(async () => {
     try {
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 20000);  // Render 콜드스타트 대응
+      const timer = setTimeout(() => ctrl.abort(), 45000);  // Render 콜드스타트 대응 (최대 45초)
       const [rankedResult, tradersResult] = await Promise.allSettled([
         fetch(`${API_URL}/traders/ranked?limit=100&min_grade=D&exclude_disqualified=${!showDisqualified}`, { signal: ctrl.signal }),
         fetch(`${API_URL}/traders?limit=100`, { signal: ctrl.signal }),
@@ -745,7 +745,7 @@ export function RankedTraders() {
       ) : fetchError ? (
         <div className="text-center py-16 text-red-400">
           <div className="text-4xl mb-3">⚠️</div>
-          <p className="text-sm mb-3">Failed to load ranked traders — retrying…</p>
+          <p className="text-sm mb-3">Loading trader data… (first load may take up to 30s)</p>
           <button
             onClick={fetchRanked}
             className="text-indigo-400 text-sm hover:underline"
