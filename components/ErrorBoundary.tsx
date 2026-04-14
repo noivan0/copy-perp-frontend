@@ -54,7 +54,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
             {this.props.name ? `${this.props.name} failed to load` : 'Something went wrong'}
           </p>
           <p className="text-gray-600 text-xs mb-4">
-            {this.state.error?.message ?? 'An unexpected error occurred'}
+            {'An unexpected error occurred. Please try again.'}
           </p>
           <button
             onClick={this.handleReset}

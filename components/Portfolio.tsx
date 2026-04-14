@@ -10,7 +10,7 @@ import { formatPnl, formatWinRate, formatAddr } from '@/lib/format';
 import { useToast } from '@/components/Toast';
 import { extractErrorMessage } from '@/lib/api';
 import { useVisibleInterval } from '@/lib/use-visible-interval';
-import { AgentBindModal } from '@/components/AgentBindModal';
+
 
 
 interface FollowerEntry {
@@ -131,15 +131,13 @@ function UnfollowConfirmDialog({
 }
 
 export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
-  const { authenticated, user } = usePrivy();
+  const { authenticated, user, getAccessToken } = usePrivy();
   const { address: walletAddress, loading: walletLoading, timedOut: walletTimedOut } = useSolanaWallet();
   const [state, setState] = useState<PortfolioState | null>(null);
   const [loading, setLoading] = useState(false);
   const [unfollowing, setUnfollowing] = useState<string | null>(null);
   const [confirmUnfollow, setConfirmUnfollow] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [agentBound, setAgentBound] = useState<boolean | null>(null);
-  const [showBindModal, setShowBindModal] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   const lastStartupAt = useRef<number>(0);
   const autoReOnboardDone = useRef(false); // 자동 재등록 1회 방어
@@ -186,10 +184,16 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
           try {
             const cachedTraders: string[] = JSON.parse(cached);
             if (cachedTraders.length > 0) {
-              // 백그라운드로 재등록
+              // 백그라운드로 재등록 (AbortController: 8s timeout → memory leak 방지)
+              const bgCtrl = new AbortController();
+              const bgTimer = setTimeout(() => bgCtrl.abort(), 8000);
+              // C-01 fix: 자동 재등록 시에도 JWT 헤더 전송
+              const bgToken = await getAccessToken().catch(() => null);
+              const bgHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+              if (bgToken) bgHeaders['X-Privy-Token'] = bgToken;
               fetch(`${API_URL}/followers/onboard`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: bgHeaders,
                 body: JSON.stringify({
                   follower_address: walletAddress,
                   traders: cachedTraders,
@@ -197,10 +201,12 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
                   max_position_usdc: DEFAULT_MAX_POSITION_USDC,
                   strategy: 'safe',
                 }),
+                signal: bgCtrl.signal,
               }).then(() => {
+                clearTimeout(bgTimer);
                 autoReOnboardDone.current = true; // 무한루프 방어
                 setTimeout(() => fetchData(), 500);
-              }).catch(() => { autoReOnboardDone.current = true; });
+              }).catch(() => { clearTimeout(bgTimer); autoReOnboardDone.current = true; });
             }
           } catch { /* ignore */ }
         }
@@ -214,21 +220,7 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
       });
       setUpdatedAt(Date.now());
 
-      // agent_bound 상태 확인 — 팔로우 중인데 미바인딩이면 모달 표시
-      if (followingData.length > 0) {
-        try {
-          const portfolioRes = await fetch(
-            `${API_URL}/followers/${walletAddress}/portfolio`,
-            { signal: ctrl.signal }
-          ).catch(() => null);
-          if (portfolioRes?.ok) {
-            const portfolioData = await portfolioRes.json();
-            const bound = portfolioData?.agent_bound === true;
-            setAgentBound(bound);
-            if (!bound) setShowBindModal(true);
-          }
-        } catch { /* agent_bound 조회 실패 — 무시 */ }
-      }
+
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') return; // unmount 또는 타임아웃 — 무시
       setError('Failed to load portfolio data');
@@ -269,7 +261,10 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
     if (!walletAddress) return;
     const check = async () => {
       try {
-        const res = await fetch(`${API_URL}/healthz`);
+        const hzCtrl = new AbortController();
+        const hzTimer = setTimeout(() => hzCtrl.abort(), 5000);
+        const res = await fetch(`${API_URL}/healthz`, { signal: hzCtrl.signal });
+        clearTimeout(hzTimer);
         const d = await res.json();
         const sa: number = d.startup_at ?? 0;
         if (sa && lastStartupAt.current && sa !== lastStartupAt.current) {
@@ -279,9 +274,13 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
           if (cached) {
             const traders: string[] = JSON.parse(cached);
             if (traders.length > 0) {
+              const reCtrl = new AbortController();
+              const reTimer = setTimeout(() => reCtrl.abort(), 8000);
+              const reHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+              try { const t = await getAccessToken(); if (t) reHeaders['X-Privy-Token'] = t; } catch { /* ignore */ }
               await fetch(`${API_URL}/followers/onboard`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: reHeaders,
                 body: JSON.stringify({
                   follower_address: walletAddress,
                   traders,
@@ -289,7 +288,9 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
                   max_position_usdc: DEFAULT_MAX_POSITION_USDC,
                   strategy: 'safe',
                 }),
+                signal: reCtrl.signal,
               });
+              clearTimeout(reTimer);
               setTimeout(() => fetchData(), 800);
             }
           }
@@ -312,10 +313,17 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
     setConfirmUnfollow(null);
     setUnfollowing(traderAddress);
     try {
+      const unfCtrl = new AbortController();
+      const unfTimer = setTimeout(() => unfCtrl.abort(), 8000);
+      // C-01 fix: unfollow 시에도 JWT 헤더 전송
+      const unfToken = await getAccessToken().catch(() => null);
+      const unfHeaders: Record<string, string> = {};
+      if (unfToken) unfHeaders['X-Privy-Token'] = unfToken;
       const res = await fetch(
         `${API_URL}/followers/${traderAddress}?follower_address=${walletAddress}`,
-        { method: 'DELETE' }
+        { method: 'DELETE', headers: unfHeaders, signal: unfCtrl.signal }
       );
+      clearTimeout(unfTimer);
       if (res.ok) {
         showToast(`Unfollowed ${formatAddr(traderAddress)}`, 'info');
         // localStorage 캐시에서도 제거
@@ -614,15 +622,7 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
                       <div className="font-mono text-sm text-white truncate">
                         {truncateAddress(f.trader_address, 8)}
                       </div>
-                      {agentBound === false && (
-                        <button
-                          onClick={() => setShowBindModal(true)}
-                          className="text-xs px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/25 transition-colors"
-                          title="Agent binding required to activate copy trading"
-                        >
-                          ⚠ Binding required
-                        </button>
-                      )}
+
                     </div>
                     <div className="text-xs text-gray-500 mt-0.5">
                       Copy {((f.copy_ratio || 0) * 100).toFixed(0)}% ·
@@ -792,6 +792,8 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
                         >
                           {t.status === 'filled' ? '✓ Filled'
                             : t.status === 'skipped_insufficient' ? '⚠ Low Funds'
+                            : t.status === 'skipped_ip_blocked' ? '⚠ IP Blocked'
+                            : t.status === 'skipped_agent_unbound' ? '⚠ Pending'
                             : isFailed ? '✗ Failed'
                             : t.status}
                         </span>
@@ -835,17 +837,7 @@ export function Portfolio({ sectionMode = false }: { sectionMode?: boolean }) {
         />
       )}
 
-      {/* Agent Bind 모달 — agent_bound=false이고 팔로우 중일 때 */}
-      {showBindModal && walletAddress && (
-        <AgentBindModal
-          walletAddress={walletAddress}
-          onComplete={() => {
-            setAgentBound(true);
-            setShowBindModal(false);
-          }}
-          onSkip={() => setShowBindModal(false)}
-        />
-      )}
+      {/* AgentBindModal 제거: 서버가 ACCOUNT_ADDRESS로 직접 주문, 팔로워 서명 불필요 */}
 
       {sectionMode ? (
         <section>

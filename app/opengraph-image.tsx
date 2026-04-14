@@ -49,7 +49,7 @@ export default async function Image() {
               fontSize: '18px',
             }}
           >
-            Live on Pacifica Testnet
+            Live on Pacifica Mainnet
           </div>
         </div>
 

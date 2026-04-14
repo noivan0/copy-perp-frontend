@@ -9,7 +9,7 @@ import { extractErrorMessage, httpErrorMessage } from '@/lib/api';
 import { formatPct, formatUSDC, formatAddr } from '@/lib/format';
 import { useToast } from '@/components/Toast';
 import { CopySettingsModal, type RiskMode } from '@/components/CopySettingsModal';
-import { AgentBindModal } from '@/components/AgentBindModal';
+
 import { useVisibleInterval } from '@/lib/use-visible-interval';
 
 function safeNum(v: unknown, fb = 0): number { const n = Number(v); return isFinite(n) ? n : fb; }
@@ -130,25 +130,27 @@ function FollowButton({
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [msg, setMsg] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [showBindModal, setShowBindModal] = useState(false);
-  // bind 완료 후 실행할 onboard 파라미터 저장
-  const pendingOnboard = useState<{ copyRatio: number; riskMode: RiskMode; maxPositionUsdc: number } | null>(null);
-  const [pendingArgs, setPendingArgs] = pendingOnboard;
   const { showToast } = useToast();
+  // C-01 fix: JWT 헤더 전송을 위한 getAccessToken
+  const { getAccessToken } = usePrivy();
 
   // 이미 팔로우 중인 경우 done 상태로 동기화
   const effectivelyDone = state === 'done' || isFollowing;
 
-  // bind 완료 후 onboard 실행 (AgentBindModal → onComplete 콜백)
   const doFollowAfterBind = async (copyRatio: number, riskMode: RiskMode, maxPositionUsdc: number) => {
     setState('loading');
     setMsg('');
     try {
+      // C-01 fix: Privy JWT 토큰을 X-Privy-Token 헤더로 전송 (백엔드 REQUIRE_AUTH=true 대응)
+      const accessToken = await getAccessToken();
+      const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (accessToken) authHeaders['X-Privy-Token'] = accessToken;
+
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 10000);
       const res = await fetch(`${API_URL}/followers/onboard`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         signal: ctrl.signal,
         body: JSON.stringify({
           follower_address: walletAddress,
@@ -215,44 +217,7 @@ function FollowButton({
 
   const doFollow = async (copyRatio: number, riskMode: RiskMode, maxPositionUsdc: number) => {
     setShowModal(false);
-
-    if (!walletAddress) {
-      await doFollowAfterBind(copyRatio, riskMode, maxPositionUsdc);
-      return;
-    }
-
-    // Agent Bind 체크: 서버 portfolio API에서 실제 agent_bound 상태 조회
-    // localStorage 캐시 우선, 없으면 서버 확인
-    const bindKey = `cp_agent_bound_${walletAddress}`;
-    let alreadyBound = false;
-    try {
-      const cached = typeof window !== 'undefined' ? localStorage.getItem(bindKey) : null;
-      if (cached === '1') {
-        alreadyBound = true;
-      } else {
-        // 서버에서 실제 agent_bound 확인
-        const res = await fetch(
-          `${API_URL}/followers/${walletAddress}/portfolio`,
-          { signal: AbortSignal.timeout(5000) }
-        ).catch(() => null);
-        if (res?.ok) {
-          const data = await res.json();
-          alreadyBound = data?.agent_bound === true;
-          if (alreadyBound) {
-            try { localStorage.setItem(bindKey, '1'); } catch { /* ignore */ }
-          }
-        }
-      }
-    } catch { /* 확인 실패 시 bind 모달 표시 */ }
-
-    if (!alreadyBound) {
-      // AgentBindModal 표시 → 완료 후 onboard
-      setPendingArgs({ copyRatio, riskMode, maxPositionUsdc });
-      setShowBindModal(true);
-      return;
-    }
-
-    // bind 완료 상태 — 바로 onboard
+    // 서버가 ACCOUNT_ADDRESS(서버 계정)로 직접 주문 — 팔로워 서명 불필요
     await doFollowAfterBind(copyRatio, riskMode, maxPositionUsdc);
   };
 
@@ -319,25 +284,7 @@ function FollowButton({
           onCancel={() => setShowModal(false)}
         />
       )}
-      {showBindModal && walletAddress && (
-        <AgentBindModal
-          walletAddress={walletAddress}
-          onSkip={() => {
-            setShowBindModal(false);
-            setPendingArgs(null);
-          }}
-          onComplete={() => {
-            // bind 완료: localStorage에 기록 후 onboard 실행
-            const key = `cp_agent_bound_${walletAddress}`;
-            try { localStorage.setItem(key, '1'); } catch { /* ignore */ }
-            setShowBindModal(false);
-            if (pendingArgs) {
-              doFollowAfterBind(pendingArgs.copyRatio, pendingArgs.riskMode, pendingArgs.maxPositionUsdc);
-              setPendingArgs(null);
-            }
-          }}
-        />
-      )}
+      {/* AgentBindModal 제거: 서버가 ACCOUNT_ADDRESS로 직접 주문, 팔로워 서명 불필요 */}
       <div className="flex flex-col items-end gap-1">
         <button
           onClick={handleClick}
@@ -581,7 +528,7 @@ export function RankedTraders() {
   const [allTraders, setAllTraders] = useState<CRSTrader[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
-  const [gradeFilter, setGradeFilter] = useState('A');
+  const [gradeFilter, setGradeFilter] = useState('B');  // mainnet: B 기본 (A+B 모두 표시)
   const userSelectedGrade = useRef(false); // 사용자가 직접 선택했으면 자동설정 하지 않음
   const [showDisqualified, setShowDisqualified] = useState(false);
   const [availableGrades, setAvailableGrades] = useState<Set<string>>(new Set());
@@ -638,7 +585,7 @@ export function RankedTraders() {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 10000);
       const [rankedResult, tradersResult] = await Promise.allSettled([
-        fetch(`${API_URL}/traders/ranked?limit=100&min_grade=C&exclude_disqualified=${!showDisqualified}`, { signal: ctrl.signal }),
+        fetch(`${API_URL}/traders/ranked?limit=200&min_grade=D&exclude_disqualified=${!showDisqualified}`, { signal: ctrl.signal }),
         fetch(`${API_URL}/traders?limit=100`, { signal: ctrl.signal }),
       ]);
       clearTimeout(timer);
@@ -731,7 +678,7 @@ export function RankedTraders() {
                 key={g}
                 onClick={() => { userSelectedGrade.current = true; setGradeFilter(g); }}
                 disabled={!hasTraders}
-                title={hasTraders ? GRADE_DESC[g] : `No ${g}-grade traders available on ${typeof NETWORK !== 'undefined' ? NETWORK : 'testnet'} — lower grade filter to include more`}
+                title={hasTraders ? GRADE_DESC[g] : `No ${g}-grade traders available on ${typeof NETWORK !== 'undefined' ? NETWORK : 'mainnet'} — lower grade filter to include more`}
                 className={`px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors border ${
                   gradeFilter === g
                     ? GRADE_COLORS[g]

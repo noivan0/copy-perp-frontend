@@ -9,8 +9,8 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { HeroCTA } from '@/components/HeroCTA';
 
-const APP_VERSION = '0.9.0';
-const DEPLOY_DATE = '2026-04-11';
+const APP_VERSION = '1.4.0';
+const DEPLOY_DATE = '2026-04-14';
 
 export default function Home() {
   return (
@@ -49,7 +49,7 @@ export default function Home() {
         <section className="text-center py-6 md:py-10">
           <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs px-3 py-1.5 rounded-full mb-4">
             <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse" />
-            Live on Pacifica Testnet
+            Live on Pacifica Mainnet
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">
             Copy Top Traders<br />
@@ -63,7 +63,7 @@ export default function Home() {
             <span className="flex items-center gap-1.5">🔐 Non-custodial</span>
             <span className="flex items-center gap-1.5">⚡ &lt;600ms latency</span>
             <span className="flex items-center gap-1.5">💰 0.1% builder fee</span>
-            <span className="flex items-center gap-1.5">🎁 Fuul rewards</span>
+            <span className="flex items-center gap-1.5">🔑 Privy wallet</span>
           </div>
           <HeroCTA />
         </section>
@@ -76,7 +76,7 @@ export default function Home() {
               { num: '01', icon: '🔑', title: 'Connect', desc: 'Sign in with Google. Solana wallet auto-created.' },
               { num: '02', icon: '🎯', title: 'Choose', desc: 'Browse CRS-ranked traders by reliability score.' },
               { num: '03', icon: '⚡', title: 'Copy', desc: 'Set ratio & max size. Trades mirror in <600ms.' },
-              { num: '04', icon: '💰', title: 'Earn', desc: 'Earn Fuul points. Builder Code noivan captures fees.' },
+              { num: '04', icon: '💰', title: 'Earn', desc: 'Builder Code (noivan) captures 0.1% of all copy trade volume on-chain.' },
             ].map(({ num, icon, title, desc }) => (
               <div key={num} className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
                 <div className="text-2xl mb-2">{icon}</div>
@@ -183,7 +183,7 @@ export default function Home() {
       <footer className="border-t border-gray-800 mt-16 py-8 text-center text-gray-600 text-sm space-y-1">
         <p>Copy Perp — Made by noivan · Pacifica Hackathon 2026</p>
         <p className="text-xs text-gray-700">
-          v{APP_VERSION} · {DEPLOY_DATE} · R9
+          v{APP_VERSION} · {DEPLOY_DATE} · Mainnet
         </p>
       </footer>
     </main>

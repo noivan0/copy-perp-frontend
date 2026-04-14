@@ -89,6 +89,7 @@ function FollowButton({
   const [errMsg, setErrMsg] = useState('');
   const [showBindModal, setShowBindModal] = useState(false);
   const { showToast } = useToast();
+  const { getAccessToken } = usePrivy();
 
   const handleClick = async () => {
     if (!isLoggedIn) {
@@ -130,9 +131,16 @@ function FollowButton({
     setFollowing(true);
     setErrMsg('');
     try {
+      // C-01 fix: Privy JWT 토큰을 X-Privy-Token 헤더로 전송 (백엔드 REQUIRE_AUTH=true 대응)
+      const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      try {
+        const accessToken = await getAccessToken();
+        if (accessToken) authHeaders['X-Privy-Token'] = accessToken;
+      } catch { /* 토큰 없으면 헤더 없이 진행 */ }
+
       const res = await fetch(`${API_URL}/followers/onboard`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify({
           follower_address: walletAddress,
           traders: [trader.address],

@@ -6,6 +6,7 @@
   "env": {
     "NEXT_PUBLIC_PRIVY_APP_ID": "cmmvoxcix058e0ckv7uhp9ip0",
     "NEXT_PUBLIC_BUILDER_CODE": "noivan",
-    "NEXT_PUBLIC_API_URL": "https://copy-perp.onrender.com"
+    "NEXT_PUBLIC_API_URL": "https://copy-perp.onrender.com",
+    "NEXT_PUBLIC_NETWORK": "mainnet"
   }
 }
