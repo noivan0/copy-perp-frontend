@@ -147,7 +147,7 @@ function FollowButton({
       if (accessToken) authHeaders['X-Privy-Token'] = accessToken;
 
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 10000);
+      const timer = setTimeout(() => ctrl.abort(), 20000);  // Render 콜드스타트 대응
       const res = await fetch(`${API_URL}/followers/onboard`, {
         method: 'POST',
         headers: authHeaders,
@@ -583,13 +583,15 @@ export function RankedTraders() {
   const fetchRanked = useCallback(async () => {
     try {
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 10000);
+      const timer = setTimeout(() => ctrl.abort(), 20000);  // Render 콜드스타트 대응
       const [rankedResult, tradersResult] = await Promise.allSettled([
-        fetch(`${API_URL}/traders/ranked?limit=200&min_grade=D&exclude_disqualified=${!showDisqualified}`, { signal: ctrl.signal }),
+        fetch(`${API_URL}/traders/ranked?limit=100&min_grade=D&exclude_disqualified=${!showDisqualified}`, { signal: ctrl.signal }),
         fetch(`${API_URL}/traders?limit=100`, { signal: ctrl.signal }),
       ]);
       clearTimeout(timer);
       if (rankedResult.status === 'rejected' || !rankedResult.value.ok) {
+        // ranked 실패 시 재시도 (5초 후 자동 재시도, fetchError=true로 표시)
+        console.warn('[RankedTraders] /traders/ranked 실패 — 재시도 예정');
         throw new Error(`/traders/ranked 오류`);
       }
       const rankedData = await rankedResult.value.json();
@@ -632,6 +634,8 @@ export function RankedTraders() {
       // ⚠️ setTraders는 여기서 하지 않음 — gradeFilter useEffect가 담당
     } catch {
       setFetchError(true);
+      // 5초 후 자동 재시도 (Render 콜드스타트 대응)
+      setTimeout(() => fetchRanked(), 5000);
     } finally {
       setLoading(false);
     }
